@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "319158977737",
+    "project_id": "hctssapp",
+    "storage_bucket": "hctssapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:319158977737:android:84789c10f85cd615257918",
+        "android_client_info": {
+          "package_name": "com.example.citas_paciente_funesami"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDGDZ831MxEmK-Wn7PuCCNnUtErQexmccg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:319158977737:android:214dbd113fc72de4257918",
+        "android_client_info": {
+          "package_name": "com.example.h_c_1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDGDZ831MxEmK-Wn7PuCCNnUtErQexmccg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
