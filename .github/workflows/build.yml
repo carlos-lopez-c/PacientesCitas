@@ -3,10 +3,10 @@ name: DevSecOps para Frontend Móvil
 on: 
   push: 
     branches: 
-      - main
+      - DevSecOps
   pull_request: 
     branches: 
-      - main
+      - DevSecOps
 
 jobs: 
   seguridad_gitleaks: 
