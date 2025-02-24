@@ -1,4 +1,4 @@
-name: DevSecOps para Frontend Móvil
+name: DevSecOps para Frontend Móviles
 
 on: 
   push: 
@@ -52,8 +52,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: analisis_codigo_sonarqube
     steps: 
-      - name: Checkout del código
+      - name: Checkout del código en DevSecOps
         uses: actions/checkout@v4
+        with: 
+          fetch-depth: 0
+          ref: DevSecOps  # Extrae el código desde DevSecOps
 
       - name: Instalar Flutter
         uses: subosito/flutter-action@v2
@@ -67,62 +70,28 @@ jobs:
       - name: Generar APK en modo release
         run: flutter build apk --release
 
-      - name: Descargar e iniciar MobSF
-        run: |
-          docker pull opensecurity/mobile-security-framework-mobsf
-          docker run -d -p 8000:8000 --name mobsf opensecurity/mobile-security-framework-mobsf
-
-      - name: Esperar a que MobSF esté listo
-        run: sleep 30
-
-      - name: Analizar APK con MobSF
-        run: |
-          APK_PATH=$(find build/app/outputs/flutter-apk -name "*.apk" | head -n 1)
-          curl -X POST "http://localhost:8000/api/v1/upload" \
-            -H "Authorization: ${{ secrets.MOBSF_API_KEY }}" \
-            -F "file=@$APK_PATH"
-
-      - name: Obtener reporte de análisis
-        run: |
-          curl -X GET "http://localhost:8000/api/v1/report_json" \
-            -H "Authorization: ${{ secrets.MOBSF_API_KEY }}" \
-            -o mobsf_report.json
-
-      - name: Subir reporte como artefacto
-        uses: actions/upload-artifact@v4
-        with: 
-          name: MobSF Report
-          path: mobsf_report.json
-
-  build_apk_production: 
-    name: Generar y Subir APK a production
+  build_apk_main: 
+    name: Generar y Subir APK a main
     runs-on: ubuntu-latest
     needs: analisis_mobsf
     steps: 
-      - name: Checkout del código en dev
+      - name: Checkout del código en DevSecOps
         uses: actions/checkout@v4
         with: 
           fetch-depth: 0
-          ref: dev  # Asegura que se extrae desde la rama dev
+          ref: DevSecOps  # Extrae el código desde DevSecOps
 
       - name: Configurar usuario de GitHub Actions
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
 
-      - name: Cambiar a la rama main y fusionar dev
+      - name: Cambiar a la rama main y fusionar DevSecOps
         run: |
           git fetch origin main
           git checkout main
-          git merge --no-ff dev -m "Merge dev into main para producción"
+          git merge --no-ff DevSecOps -m "Merge DevSecOps into main para producción"
           git push origin main
-
-      - name: Cambiar a la rama production y actualizar con main
-        run: |
-          git fetch origin production || true
-          git checkout -b production origin/production || git checkout production
-          git merge --no-ff main -m "Sync con main para generar APK de producción"
-          git push origin production
 
       - name: Instalar Flutter
         uses: subosito/flutter-action@v2
@@ -141,7 +110,7 @@ jobs:
           mv build/app/outputs/flutter-apk/app-release.apk app-release.apk
           git add app-release.apk
           git commit -m "Generado APK de producción"
-          git push origin production --force  # Solo sube el APK, sin tocar código
+          git push origin main --force  # Solo sube el APK, sin tocar código adicional
 
       - name: Subir APK como artefacto en GitHub Actions
         uses: actions/upload-artifact@v4
