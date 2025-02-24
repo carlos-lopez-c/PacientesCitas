@@ -38,7 +38,7 @@ class CreateAppointments {
   //ToJson
   Map<String, dynamic> toJson() {
     return {
-      'patientId': patientId,
+      'patientID': patientId,
       'date':
           "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}",
       'appointmentTime': appointmentTime,
@@ -52,7 +52,7 @@ class CreateAppointments {
   //FromJson
   factory CreateAppointments.fromJson(Map<String, dynamic> json) {
     return CreateAppointments(
-      patientId: json['patientId'],
+      patientId: json['patientID'],
       date: DateTime.parse(json['date']),
       appointmentTime: json['appointmentTime'],
       medicalInsurance: json['medicalInsurance'],
