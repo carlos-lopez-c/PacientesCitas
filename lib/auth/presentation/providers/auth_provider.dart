@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fundacion_paciente_app/auth/domain/entities/user_entities.dart';
 import 'package:fundacion_paciente_app/auth/domain/entities/user_register.dart';
@@ -45,16 +46,27 @@ class AuthNotifier extends StateNotifier<AuthState> {
     // state =state.copyWith(user: user, authStatus: AuthStatus.authenticated)
   }
 
-  void registerUser(RequestData register) async {
+  void registerUser(RequestData register, BuildContext context) async {
     try {
       final userResponseValid = await authRepository.register(register);
 
       if (userResponseValid) {
         // 🔥 Redirigir a la pantalla de Login después del registro exitoso
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Usuario registrado correctamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
         ref.read(goRouterProvider).go('/login');
       }
     } on CustomError catch (e) {
-      print(e.message);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          backgroundColor: Colors.red,
+        ),
+      );
       logout(e.message);
     } catch (e) {
       logout('Error no controlado');

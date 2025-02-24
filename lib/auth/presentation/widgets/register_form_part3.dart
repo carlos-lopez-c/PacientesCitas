@@ -164,7 +164,9 @@ class RegisterPatientPart3 extends ConsumerWidget {
                 onPressed: () {
                   registerForm.isPosting
                       ? null
-                      : ref.read(registerFormProvider.notifier).onFormSubmit();
+                      : ref
+                          .read(registerFormProvider.notifier)
+                          .onFormSubmit(context);
                 },
                 style: ButtonStyle(
                   backgroundColor: WidgetStateProperty.all(Colors.blue),

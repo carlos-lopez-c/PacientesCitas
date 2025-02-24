@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/material.dart';
 import 'package:formz/formz.dart';
 import 'package:fundacion_paciente_app/auth/domain/entities/user_register.dart';
 import 'package:fundacion_paciente_app/auth/presentation/providers/auth_provider.dart';
@@ -110,7 +111,7 @@ class FormularioState {
 }
 
 class FormularioNotifier extends StateNotifier<FormularioState> {
-  final Function(RequestData) registerUserCallback;
+  final Function(RequestData, BuildContext) registerUserCallback;
   FormularioNotifier({required this.registerUserCallback})
       : super(const FormularioState());
 
@@ -260,7 +261,7 @@ class FormularioNotifier extends StateNotifier<FormularioState> {
     if (!state.isValid) return;
   }
 
-  Future<void> onFormSubmit() async {
+  Future<void> onFormSubmit(BuildContext context) async {
     _touchEveryField();
 
     if (!state.isValid) return;
@@ -296,7 +297,7 @@ class FormularioNotifier extends StateNotifier<FormularioState> {
             healthInsurance: state.health_insurance_patient.value,
             historyTreatmentsReceived: ["None"]),
       );
-      await registerUserCallback(userRegister);
+      await registerUserCallback(userRegister, context);
       print('Formulario enviado con éxito');
     } finally {
       state = state.copyWith(isPosting: false);
