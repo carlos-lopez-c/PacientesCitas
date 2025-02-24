@@ -85,7 +85,7 @@ class AppointmentDatasourceImpl implements AppointmentDatasource {
       // Obtiene todas las citas de la colección "appointments"
       QuerySnapshot querySnapshot = await _firestore
           .collection('appointments')
-          .where('patientId', isEqualTo: patientId)
+          .where('patientID', isEqualTo: patientId)
           .get();
 
       // Mapea los documentos obtenidos a objetos Appointments
