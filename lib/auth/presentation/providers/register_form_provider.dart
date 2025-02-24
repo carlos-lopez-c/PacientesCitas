@@ -270,6 +270,7 @@ class FormularioNotifier extends StateNotifier<FormularioState> {
     try {
       final userRegister = RequestData(
         createUser: CreateUser(
+          role: 'PACIENTE',
           email: state.email_user.value,
           password: state.password_user.value,
           username: state.username_user.value,

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fundacion_paciente_app/auth/infrastructure/errors/auth_errors.dart';
+import 'package:fundacion_paciente_app/auth/presentation/providers/auth_provider.dart';
 import 'package:fundacion_paciente_app/home/domain/entities/cita.entity.dart';
 import 'package:fundacion_paciente_app/home/domain/entities/registerCita.entity.dart';
 import 'package:fundacion_paciente_app/home/domain/repositories/appointment_repository.dart';
@@ -10,15 +11,18 @@ import 'package:fundacion_paciente_app/config/routes/app_routes.dart';
 final appointmentProvider =
     StateNotifierProvider<AppointmentNotifier, AppointmentState>((ref) {
   final repository = AppointmentRepositoryImpl();
-  return AppointmentNotifier(repository, ref: ref);
+  final patientId = ref.watch(authProvider).user!.patientID;
+  return AppointmentNotifier(repository, ref: ref, patientId: patientId);
 });
 
 // 🔹 Notifier que maneja el estado de las citas médicas
 class AppointmentNotifier extends StateNotifier<AppointmentState> {
   final AppointmentRepository repository;
   final Ref ref;
+  final String patientId;
 
-  AppointmentNotifier(this.repository, {required this.ref})
+  AppointmentNotifier(this.repository,
+      {required this.ref, required this.patientId})
       : super(AppointmentState(calendarioCitaSeleccionada: DateTime.now())) {
     getAppointmentsByDate(state
         .calendarioCitaSeleccionada); // ✅ Cargar citas del día actual al iniciar
@@ -30,7 +34,7 @@ class AppointmentNotifier extends StateNotifier<AppointmentState> {
     try {
       state = state.copyWith(loading: true);
       print('🔹 Cargando todas las citas...');
-      final appointments = await repository.getAppointments();
+      final appointments = await repository.getAppointments(patientId);
       state = state.copyWith(
           loading: false, appointments: appointments, errorMessage: '');
       print('✅ Citas cargadas: ${appointments.length}');
@@ -49,8 +53,8 @@ class AppointmentNotifier extends StateNotifier<AppointmentState> {
       print('🔹 Buscando citas para la fecha: $date');
 
       final formattedDate = date.toIso8601String().split('T')[0]; // YYYY-MM-DD
-      final appointments =
-          await repository.getAppointmentsByDate(DateTime.parse(formattedDate));
+      final appointments = await repository.getAppointmentsByDate(
+          DateTime.parse(formattedDate), patientId);
 
       state = state.copyWith(
         loading: false,
@@ -69,12 +73,13 @@ class AppointmentNotifier extends StateNotifier<AppointmentState> {
   }
 
   /// 🔹 Crear una nueva cita
-  Future<void> createAppointment(CreateAppointments newAppointment) async {
+  Future<void> createAppointment(
+      CreateAppointments newAppointment, String patientName) async {
     try {
       state = state.copyWith(loading: true);
       print('🔹 Creando nueva cita...');
 
-      await repository.createAppointment(newAppointment);
+      await repository.createAppointment(newAppointment, patientName);
       print('✅ Cita creada exitosamente');
       // 🔹 Recargar citas después de crear una nueva
       await getAppointments();

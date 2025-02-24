@@ -6,9 +6,8 @@ class User {
   String email;
   String username;
   bool isActive;
-  UserInformation userInformation;
-  List<UserRole> userRoles;
-  String token;
+  UserInformationEntity userInformation;
+  String role;
   String patientID;
 
   User({
@@ -17,8 +16,7 @@ class User {
     required this.username,
     required this.isActive,
     required this.userInformation,
-    required this.userRoles,
-    required this.token,
+    required this.role,
     required this.patientID,
   });
 }

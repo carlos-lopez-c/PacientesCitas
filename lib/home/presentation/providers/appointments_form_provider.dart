@@ -33,7 +33,7 @@ final appointmentFormProvider = StateNotifierProvider.autoDispose<
 
 // 🔹 Notifier que maneja el estado del formulario de citas
 class AppointmentFormNotifier extends StateNotifier<AppointmentFormState> {
-  final Function(CreateAppointments) registerAppointmentCallback;
+  final Function(CreateAppointments, String) registerAppointmentCallback;
   final AppointmentRepository appointmentRepository;
   final PatientRepository patientRepository;
   final TypeTherapyRepository typeTherapyRepository;
@@ -134,9 +134,14 @@ class AppointmentFormNotifier extends StateNotifier<AppointmentFormState> {
         patientId: state.patientId,
         specialtyTherapyId: state.specialtyTherapyId!,
       );
+      print(state.patientEntity!.firstname);
       print('🔹 Guardando cita...');
-
-      await registerAppointmentCallback(newAppointment);
+      final nombreCompleto =
+          state.patientEntity!.firstname + ' ' + state.patientEntity!.lastname;
+      await registerAppointmentCallback(
+        newAppointment,
+        nombreCompleto,
+      );
       state = state.copyWith(loading: false, errorMessage: '');
       print('✅ Cita guardada correctamente');
     } catch (e) {

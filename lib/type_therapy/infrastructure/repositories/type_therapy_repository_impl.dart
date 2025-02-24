@@ -13,9 +13,4 @@ class TypeTherapyRepositoryImpl implements TypeTherapyRepository {
   Future<List<TypeTherapyEntity>> getTypeTherapies() {
     return datasource.getTypeTherapies();
   }
-
-  @override
-  Future<TypeTherapyEntity> getTypeTherapyById(String id) {
-    return datasource.getTypeTherapyById(id);
-  }
 }

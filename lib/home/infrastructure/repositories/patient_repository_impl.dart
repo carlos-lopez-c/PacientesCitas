@@ -8,10 +8,6 @@ class PatientRepositoryImpl implements PatientRepository {
 
   PatientRepositoryImpl({PatientDatasource? patientDatasource})
       : patientDatasource = patientDatasource ?? PatientDatasourceImpl();
-  @override
-  Future<Patient> createPatient(Patient patient) {
-    return patientDatasource.createPatient(patient);
-  }
 
   @override
   Future<Patient> getPatient(String id) {

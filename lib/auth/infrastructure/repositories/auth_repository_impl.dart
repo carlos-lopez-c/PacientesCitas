@@ -8,7 +8,7 @@ class AuthRepositoryImpl implements AuthRepository {
   final AuthDatasource authDatasource;
 
   AuthRepositoryImpl({AuthDatasource? authDatasource})
-      : authDatasource = authDatasource ?? AuthDatasourceImpl();
+      : authDatasource = authDatasource ?? FirebaseAuthDatasource();
 
   @override
   Future<User> login(String email, String password) {
@@ -16,8 +16,8 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<User> checkAuthStatus(String token) {
-    return authDatasource.checkAuthStatus(token);
+  Future<User> checkAuthStatus() {
+    return authDatasource.checkAuthStatus();
   }
 
   @override
@@ -38,5 +38,10 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> resetPassword(String email, String token, String newPassword) {
     return authDatasource.resetPassword(email, token, newPassword);
+  }
+
+  @override
+  Future<void> logout() {
+    return authDatasource.logout();
   }
 }

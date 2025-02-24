@@ -1,11 +1,11 @@
-class UserInformation {
+class UserInformationEntity {
   String id;
   String firstName;
   String lastName;
   String phone;
   String address;
 
-  UserInformation({
+  UserInformationEntity({
     required this.id,
     required this.firstName,
     required this.lastName,

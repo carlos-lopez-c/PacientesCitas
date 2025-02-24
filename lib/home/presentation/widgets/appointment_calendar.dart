@@ -48,7 +48,7 @@ class AppointmentCalendar extends ConsumerWidget {
                       appointmentState.appointments.where((cita) {
                     try {
                       final citaDate =
-                          DateFormat('MMMM d, y', 'en_US').parse(cita.date);
+                          DateFormat('yyyy MM, dd').parse(cita.date);
                       return isSameDay(date, citaDate);
                     } catch (_) {
                       return false;

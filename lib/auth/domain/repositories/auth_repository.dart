@@ -4,7 +4,8 @@ import 'package:fundacion_paciente_app/auth/domain/entities/user_register.dart';
 abstract class AuthRepository {
   Future<User> login(String email, String password);
   Future<bool> register(RequestData user);
-  Future<User> checkAuthStatus(String token);
+  Future<User> checkAuthStatus();
+  Future<void> logout();
   //forgot password
   Future<void> sendCode(String email);
   //validate code

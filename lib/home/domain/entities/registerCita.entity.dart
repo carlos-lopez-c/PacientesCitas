@@ -4,6 +4,7 @@ class CreateAppointments {
   String appointmentTime;
   String medicalInsurance;
   String specialtyTherapyId;
+  String status = 'Pendiente';
   String diagnosis;
 
   CreateAppointments({
@@ -19,6 +20,7 @@ class CreateAppointments {
     String? patientId,
     DateTime? date,
     String? appointmentTime,
+    String status = 'Pendiente',
     String? medicalInsurance,
     String? specialtyTherapyId,
     String? diagnosis,
@@ -41,6 +43,7 @@ class CreateAppointments {
           "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}",
       'appointmentTime': appointmentTime,
       'medicalInsurance': medicalInsurance,
+      'status': status,
       'specialtyTherapyId': specialtyTherapyId,
       'diagnosis': diagnosis,
     };

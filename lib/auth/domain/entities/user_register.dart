@@ -38,12 +38,14 @@ class CreateUser {
   final String password;
   final String username;
   final UserInformation userInformation;
+  final String role;
 
   CreateUser({
     required this.email,
     required this.password,
     required this.username,
     required this.userInformation,
+    required this.role,
   });
 
   Map<String, dynamic> toMap() {
@@ -51,6 +53,7 @@ class CreateUser {
       'email': email,
       'password': password,
       'username': username,
+      'role': role,
       'userInformation': userInformation.toMap(),
     };
   }

@@ -1,93 +1,63 @@
-import 'package:dio/dio.dart';
-import 'package:fundacion_paciente_app/auth/infrastructure/errors/auth_errors.dart';
-import 'package:fundacion_paciente_app/config/constants/enviroments.dart';
-import 'package:fundacion_paciente_app/home/domain/datasources/patient_datasource.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fundacion_paciente_app/home/domain/entities/patient_entities.dart';
-import 'package:fundacion_paciente_app/home/infrastructure/mappers/patient_mapper.dart';
-import 'package:fundacion_paciente_app/shared/infrastructure/services/key_value_storage_service_impl.dart';
+import 'package:fundacion_paciente_app/home/domain/datasources/patient_datasource.dart';
 
 class PatientDatasourceImpl implements PatientDatasource {
-  final keyValueStorageService = KeyValueStorageServiceImpl();
-  final dio = Dio(BaseOptions(
-    baseUrl: Environment.apiUrl,
-    headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer '},
-  ));
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<String?> _getToken() async {
-    return await keyValueStorageService.getValue<String>('token');
-  }
-
-  Future<void> _setAuthorizationHeader() async {
-    final token = await _getToken();
-    if (token != null && token.isNotEmpty) {
-      print("Se estableció el token" + token);
-      dio.options.headers['Authorization'] = 'Bearer $token';
-    }
-  }
-
-  @override
-  Future<Patient> createPatient(Patient patient) async {
-    try {
-      final response = await dio.post('/patients', data: patient.toJson());
-      final patientData = PatientMapper.patientJsonToEntity(response.data);
-      return patientData;
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 401) {
-        throw Exception('Necesitas iniciar sesión');
-      }
-      if (e.response?.statusCode == 400) {
-        throw CustomError(
-            e.response?.data['message'] ?? 'Error en la petición');
-      }
-      if (e.type == DioExceptionType.connectionTimeout) {
-        throw CustomError('Revisar conexión a internet');
-      }
-      if (e.response?.statusCode == 500) {
-        throw CustomError('Error en el servidor, intenta más tarde');
-      }
-      throw Exception();
-    } catch (e) {
-      throw Exception();
-    }
-  }
-
-//TODO: Implementar el método getPatient correctamente con el id del representante
   @override
   Future<Patient> getPatient(String id) async {
     try {
-      await _setAuthorizationHeader();
-      print("ID: $id");
-      final response = await dio.get('/patients/$id');
-      print(response.data);
-      final patient = PatientMapper.patientJsonToEntity(response.data);
-      print(patient.dni);
-      return patient;
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 401) {
-        throw Exception('Necesitas iniciar sesión');
-      }
-      if (e.response?.statusCode == 403) {
-        throw CustomError(e.response?.data['message'] ??
-            'No tienes permisos para acceder a esta información');
-      }
-      if (e.response?.statusCode == 400) {
-        throw CustomError(
-            e.response?.data['message'] ?? 'Error en la petición');
-      }
-      if (e.type == DioExceptionType.connectionTimeout) {
-        throw CustomError('Revisar conexión a internet');
-      }
-      if (e.response?.statusCode == 500) {
-        throw CustomError('Error en el servidor, intenta más tarde');
-      }
+      // Obtiene el documento del paciente por su ID
+      DocumentSnapshot docSnapshot =
+          await _firestore.collection('patients').doc(id).get();
 
-      print("Error: $e");
-      throw Exception(
-        'Error no controlado',
-      );
+      if (docSnapshot.exists) {
+        // Convierte los datos del documento a un mapa
+        Map<String, dynamic> data = docSnapshot.data() as Map<String, dynamic>;
+
+        // Convierte la cadena de fecha a DateTime
+        DateTime birthdate;
+        if (data['birthdate'] is String) {
+          birthdate = DateTime.parse(data['birthdate']);
+        } else if (data['birthdate'] is Timestamp) {
+          birthdate = (data['birthdate'] as Timestamp).toDate();
+        } else {
+          throw Exception('Formato de fecha no válido');
+        }
+
+        // Crea una instancia de Patient a partir de los datos
+        Patient patient = Patient(
+          id: docSnapshot.id,
+          firstname: data['firstname'] ?? 'Nombre no disponible',
+          lastname: data['lastname'] ?? 'Apellido no disponible',
+          legalGuardianId: data['legalGuardianId'] ?? 'ID no disponible',
+          birthdate: birthdate,
+          legalGuardian: data['legalGuardian'] ?? 'Representante no disponible',
+          dni: data['dni'] ?? 'DNI no disponible',
+          disability: List<String>.from(data['disability'] ?? []),
+          gender: data['gender'] ?? 'Género no disponible',
+          relationshipRepresentativePatient:
+              data['relationshipRepresentativePatient'] ??
+                  'Relación no disponible',
+          healthInsurance: data['healthInsurance'] ?? 'Seguro no disponible',
+          typeTherapyRequired:
+              List<String>.from(data['typeTherapyRequired'] ?? []),
+          currentMedications:
+              List<String>.from(data['currentMedications'] ?? []),
+          allergies: List<String>.from(data['allergies'] ?? []),
+          historyTreatmentsReceived:
+              List<String>.from(data['historyTreatmentsReceived'] ?? []),
+          observations: data['observations'],
+        );
+
+        return patient;
+      } else {
+        throw Exception('Paciente no encontrado');
+      }
     } catch (e) {
-      print("Error: " + e.toString());
-      throw Exception();
+      print('Error al obtener la información del paciente: $e');
+      throw Exception('Error al obtener la información del paciente');
     }
   }
 }

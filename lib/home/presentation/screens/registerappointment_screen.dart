@@ -30,7 +30,9 @@ class RegisterAppointment extends ConsumerWidget {
             duration: Duration(seconds: 3),
           ),
         );
+        
       }
+
     });
 
     final authState = ref.watch(authProvider);

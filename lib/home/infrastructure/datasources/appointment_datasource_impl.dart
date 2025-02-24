@@ -1,164 +1,103 @@
-import 'package:dio/dio.dart';
-import 'package:fundacion_paciente_app/auth/infrastructure/errors/auth_errors.dart';
-import 'package:fundacion_paciente_app/config/constants/enviroments.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fundacion_paciente_app/home/domain/datasources/appointment_datasource.dart';
 import 'package:fundacion_paciente_app/home/domain/entities/cita.entity.dart';
 import 'package:fundacion_paciente_app/home/domain/entities/registerCita.entity.dart';
-import 'package:fundacion_paciente_app/shared/infrastructure/services/key_value_storage_service_impl.dart';
 
 class AppointmentDatasourceImpl implements AppointmentDatasource {
-  final keyValueStorageService = KeyValueStorageServiceImpl();
-  final dio = Dio(BaseOptions(
-    baseUrl: Environment.apiUrl,
-    headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer '},
-  ));
-
-  Future<String?> _getToken() async {
-    return await keyValueStorageService.getValue<String>('token');
-  }
-
-  Future<void> _setAuthorizationHeader() async {
-    final token = await _getToken();
-    if (token != null && token.isNotEmpty) {
-      print("token: $token");
-      dio.options.headers['Authorization'] = 'Bearer $token';
-    }
-  }
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
-  Future<void> createAppointment(CreateAppointments appointment) async {
+  Future<void> createAppointment(
+      CreateAppointments appointment, String patientName) async {
     try {
-      print(appointment.toJson());
-      await _setAuthorizationHeader();
-      final response =
-          await dio.post('/appointments', data: appointment.toJson());
-      print("response: ${response.data}");
-
-      if (response.statusCode == 201) {
-        print("Cita creada correctamente");
-        return;
-      }
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 401) {
-        throw CustomError('Token incorrecto');
-      }
-      if (e.response?.statusCode == 400) {
-        throw CustomError(
-            e.response?.data['message'] ?? 'Error en la petición');
-      }
-      print("Error: ${e.response?.data}");
-      throw Exception(
-        'Error no controlado',
-      );
+      // Convierte el objeto appointment a un mapa
+      Map<String, dynamic> appointmentData = appointment.toJson();
+      // Agrega el nombre del paciente al mapa\
+      print("Nombre del paciente: $patientName");
+      appointmentData['patient'] = patientName;
+      // Agrega la cita a la colección "appointments" en Firestore
+      await _firestore.collection('appointments').add(appointmentData);
+      print("Cita creada correctamente en Firestore");
     } catch (e) {
-      print(e.toString());
-      print("Error: $e");
-      throw Exception(
-        'Error no controlado',
-      );
+      print("Error al crear la cita: $e");
+      throw Exception('Error al crear la cita');
     }
   }
 
   @override
-  Future<void> deleteAppointment(Appointments appointment) {
-    // TODO: implement deleteAppointment
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> updateAppointment(Appointments appointment) {
-    // TODO: implement updateAppointment
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<List<Appointments>> getAppointmentsByDate(DateTime date) async {
+  Future<void> deleteAppointment(Appointments appointment) async {
     try {
-      await _setAuthorizationHeader();
-      print("date: $date");
-      final response = await dio
-          .get('/appointments/find-all-by-patient-and-date?date=$date');
-      final appointments = (response.data['data'] as List)
-          .map((appointment) => Appointments.fromJson(appointment))
+      // Elimina la cita por su ID
+      await _firestore.collection('appointments').doc(appointment.id).delete();
+      print("Cita eliminada correctamente en Firestore");
+    } catch (e) {
+      print("Error al eliminar la cita: $e");
+      throw Exception('Error al eliminar la cita');
+    }
+  }
+
+  @override
+  Future<void> updateAppointment(Appointments appointment) async {
+    try {
+      // Actualiza la cita por su ID
+      await _firestore
+          .collection('appointments')
+          .doc(appointment.id)
+          .update(appointment.toJson());
+      print("Cita actualizada correctamente en Firestore");
+    } catch (e) {
+      print("Error al actualizar la cita: $e");
+      throw Exception('Error al actualizar la cita');
+    }
+  }
+
+  @override
+  Future<List<Appointments>> getAppointmentsByDate(
+      DateTime date, String patientId) async {
+    try {
+      // Formatea la fecha para que coincida con el formato almacenado en Firestore
+      String formattedDate =
+          "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+
+      // Consulta las citas que coinciden con la fecha y el patientId proporcionados
+      QuerySnapshot querySnapshot = await _firestore
+          .collection('appointments')
+          .where('date', isEqualTo: formattedDate)
+          .where('patientId', isEqualTo: patientId)
+          .get();
+
+      // Mapea los documentos obtenidos a objetos Appointments
+      List<Appointments> appointments = querySnapshot.docs
+          .map((doc) =>
+              Appointments.fromJson(doc.data() as Map<String, dynamic>))
           .toList();
-      print("appointments: $appointments");
+
       return appointments;
     } catch (e) {
-      final error = e as DioError;
-      if (error.response?.statusCode == 401) {
-        print(
-            "error: ${error.response?.data['message'] ?? 'Token incorrecto'}");
-        throw CustomError(
-            error.response?.data['message'] ?? 'Token incorrecto');
-      }
-      if (error.response?.statusCode == 403) {
-        print("error: ${error.response?.data['message']}");
-        throw CustomError(error.response?.data['message'] ??
-            'No tienes permisos para realizar esta acción');
-      }
-      if (error.response?.statusCode == 400) {
-        print("error: ${error.response?.data['message']}");
-        throw CustomError(
-            error.response?.data['message'] ?? 'Error en la petición');
-      }
-      if (error.response?.statusCode == 404) {
-        throw CustomError(
-            error.response?.data['message'] ?? 'No hay citas para esta fecha');
-      }
-      if (error.response?.statusCode == 500) {
-        print("error: ${error.response?.data['message']}");
-        throw CustomError(
-            error.response?.data['message'] ?? 'Error en el servidor');
-      }
-
-      throw CustomError(
-        error.response?.data['message'] ?? 'Error no controlado',
-      );
+      print("Error al obtener las citas: $e");
+      throw Exception('Error al obtener las citas');
     }
   }
 
   @override
-  Future<List<Appointments>> getAppointments() async {
-    print(dio.options.baseUrl);
+  Future<List<Appointments>> getAppointments(String patientId) async {
     try {
-      await _setAuthorizationHeader();
-      final response = await dio.get('/appointments/find-by-all-patient');
-      final appointments = (response.data['data'] as List)
-          .map((appointment) => Appointments.fromJson(appointment))
+      // Obtiene todas las citas de la colección "appointments"
+      QuerySnapshot querySnapshot = await _firestore
+          .collection('appointments')
+          .where('patientId', isEqualTo: patientId)
+          .get();
+
+      // Mapea los documentos obtenidos a objetos Appointments
+      List<Appointments> appointments = querySnapshot.docs
+          .map((doc) =>
+              Appointments.fromJson(doc.data() as Map<String, dynamic>))
           .toList();
-      print("appointments: $appointments");
+
       return appointments;
     } catch (e) {
-      final error = e as DioError;
-      if (error.response?.statusCode == 401) {
-        print(
-            "error: ${error.response?.data['message'] ?? 'Token incorrecto'}");
-        throw CustomError(
-            error.response?.data['message'] ?? 'Token incorrecto');
-      }
-      if (error.response?.statusCode == 403) {
-        print("error: ${error.response?.data['message']}");
-        throw CustomError(error.response?.data['message'] ??
-            'No tienes permisos para realizar esta acción');
-      }
-      if (error.response?.statusCode == 400) {
-        print("error: ${error.response?.data['message']}");
-        throw CustomError(
-            error.response?.data['message'] ?? 'Error en la petición');
-      }
-      if (error.response?.statusCode == 404) {
-        throw CustomError(
-            error.response?.data['message'] ?? 'No hay citas para esta fecha');
-      }
-      if (error.response?.statusCode == 500) {
-        print("error: ${error.response?.data['message']}");
-        throw CustomError(
-            error.response?.data['message'] ?? 'Error en el servidor');
-      }
-
-      throw CustomError(
-        error.response?.data['message'] ?? 'Error no controlado',
-      );
+      print("Error al obtener las citas: $e");
+      throw Exception('Error al obtener las citas');
     }
   }
 }
