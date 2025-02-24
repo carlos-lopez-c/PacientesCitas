@@ -5,8 +5,6 @@ import 'package:fundacion_paciente_app/home/presentation/providers/appointments_
 import 'package:fundacion_paciente_app/home/presentation/widgets/appointment_calendar.dart';
 import 'package:fundacion_paciente_app/home/presentation/widgets/home_view.dart';
 import 'package:fundacion_paciente_app/shared/presentation/widgets/header.dart';
-import 'package:go_router/go_router.dart';
-import 'package:fundacion_paciente_app/home/presentation/widgets/appointment_list.dart';
 
 class HomeScreen extends ConsumerWidget {
   static const String name = 'home-screen';
