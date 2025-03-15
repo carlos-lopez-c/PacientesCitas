@@ -3,23 +3,58 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fundacion_paciente_app/auth/presentation/providers/page_register.dart';
 import 'package:fundacion_paciente_app/auth/presentation/providers/register_form_provider.dart';
 import 'package:fundacion_paciente_app/shared/presentation/widgets/custom_dropdown_form_field.dart';
-import 'package:fundacion_paciente_app/shared/presentation/widgets/custom_date_form_field.dart';
+import 'package:fundacion_paciente_app/shared/presentation/widgets/custom_birth_date_form_field.dart';
 import 'package:fundacion_paciente_app/shared/presentation/widgets/custom_text_form_fiield.dart';
+import 'package:fundacion_paciente_app/shared/presentation/widgets/custom_filled_button.dart';
 
-class RegisterPatientPart2 extends ConsumerWidget {
-  const RegisterPatientPart2({super.key});
+class RegisterFormPart2 extends ConsumerStatefulWidget {
+  const RegisterFormPart2({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RegisterFormPart2> createState() => _RegisterFormPart2State();
+}
+
+class _RegisterFormPart2State extends ConsumerState<RegisterFormPart2> {
+  late TextEditingController guardianLegalController;
+
+  @override
+  void initState() {
+    super.initState();
+    guardianLegalController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    guardianLegalController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final registerForm = ref.watch(registerFormProvider);
     final pageState = ref.watch(pageControllerProvider);
     final currentPage = pageState.currentPage;
-    final scrollController = ScrollController();
+    final colors = Theme.of(context).colorScheme;
+
+    // Actualizar el valor del guardián legal y notificar al provider
+    final guardianName =
+        "${registerForm.firstname_user.value} ${registerForm.lastname_user.value}";
+    if (guardianLegalController.text != guardianName) {
+      guardianLegalController.text = guardianName;
+      // Notificar al provider del cambio
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref
+            .read(registerFormProvider.notifier)
+            .onGuardianLegalPatientChanged(guardianName);
+      });
+    }
+
     final genders = [
       {'name': 'Masculino', 'value': 'HOMBRE'},
       {'name': 'Femenino', 'value': 'MUJER'},
       {'name': 'Otro', 'value': 'OTRO'},
     ];
+
     final relations = [
       {'name': 'Padre', 'value': 'PADRE'},
       {'name': 'Madre', 'value': 'MADRE'},
@@ -31,94 +66,80 @@ class RegisterPatientPart2 extends ConsumerWidget {
       {'name': 'Abuela', 'value': 'ABUELA'},
       {'name': 'Guardian Legal', 'value': 'GUARDIAN_LEGAL'},
     ];
-    return SingleChildScrollView(
-      controller: scrollController,
-      child: Column(children: [
-        const SizedBox(
-          height: 10,
-        ),
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: 10),
         const Text(
-          textAlign: TextAlign.start,
           'Información Personal del Paciente',
           style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(
-          height: 15,
-        ),
+        const SizedBox(height: 15),
         CustomTextFormField(
           initialValue: registerForm.cedula_patient.value,
-          errorMessage: registerForm.isFormPosted
+          errorMessage: registerForm.isFormPostedStep2
               ? registerForm.cedula_patient.errorMessage
               : null,
-          prefixIcon: const Icon(Icons.person_2_rounded),
+          prefixIcon: Icon(Icons.badge_outlined, color: colors.primary),
           label: 'Cédula de Ciudadanía',
-          hint: 'Ingrese su cédula de ciudadanía',
-          keyboardType: TextInputType.emailAddress,
+          hint: 'Ingrese la cédula',
+          keyboardType: TextInputType.number,
           onChanged:
               ref.read(registerFormProvider.notifier).onCedulaPatientChanged,
         ),
-        const SizedBox(
-          height: 15,
-        ),
+        const SizedBox(height: 15),
         CustomTextFormField(
           initialValue: registerForm.firstname_patient.value,
-          errorMessage: registerForm.isFormPosted
+          errorMessage: registerForm.isFormPostedStep2
               ? registerForm.firstname_patient.errorMessage
               : null,
-          prefixIcon: const Icon(Icons.person),
+          prefixIcon: Icon(Icons.person_outline, color: colors.primary),
           label: 'Nombre',
-          hint: 'Ingrese su nombre',
+          hint: 'Ingrese el nombre',
           keyboardType: TextInputType.name,
           onChanged:
               ref.read(registerFormProvider.notifier).onFirstnamePatientChanged,
         ),
-        const SizedBox(
-          height: 15,
-        ),
+        const SizedBox(height: 15),
         CustomTextFormField(
           initialValue: registerForm.lastname_patient.value,
-          errorMessage: registerForm.isFormPosted
+          errorMessage: registerForm.isFormPostedStep2
               ? registerForm.lastname_patient.errorMessage
               : null,
-          prefixIcon: const Icon(Icons.person),
+          prefixIcon: Icon(Icons.person_outline, color: colors.primary),
           label: 'Apellido',
-          hint: 'Ingrese su apellido',
+          hint: 'Ingrese el apellido',
           keyboardType: TextInputType.name,
           onChanged:
               ref.read(registerFormProvider.notifier).onLastnamePatientChanged,
         ),
-        const SizedBox(
-          height: 15,
-        ),
-        CustomDateFormField(
-          isDatePicker: true,
-          errorMessage: registerForm.isFormPosted
+        const SizedBox(height: 15),
+        CustomBirthDateFormField(
+          errorMessage: registerForm.isFormPostedStep2
               ? registerForm.date_patient.errorMessage
               : null,
-          prefixIcon: const Icon(Icons.calendar_today),
+          prefixIcon:
+              Icon(Icons.calendar_today_outlined, color: colors.primary),
           label: 'Fecha de Nacimiento',
-          hint: 'Seleccione su fecha de nacimiento',
+          hint: 'Seleccione la fecha',
           keyboardType: TextInputType.text,
           onChanged:
               ref.read(registerFormProvider.notifier).onDatePatientChanged,
-          initialValue: registerForm
-              .date_patient.value, // Este es el valor de la fecha actual
+          initialValue: registerForm.date_patient.value,
         ),
-
-        const SizedBox(
-          height: 15,
-        ),
-
+        const SizedBox(height: 15),
         CustomDropdownFormField(
           value: registerForm.gender_patient.value.isNotEmpty
               ? registerForm.gender_patient.value
               : null,
-          errorMessage: registerForm.isFormPosted
+          errorMessage: registerForm.isFormPostedStep2
               ? registerForm.gender_patient.errorMessage
               : null,
+          prefixIcon: Icon(Icons.person_outline, color: colors.primary),
           label: 'Género',
           onChanged: (value) {
             final valueD = value ?? '';
@@ -126,7 +147,7 @@ class RegisterPatientPart2 extends ConsumerWidget {
                 .read(registerFormProvider.notifier)
                 .onGenderPatientChanged(valueD);
           },
-          hint: 'Seleccione su género',
+          hint: 'Seleccione el género',
           items: genders.map((gender) {
             return DropdownMenuItem(
               value: gender['value'],
@@ -134,111 +155,114 @@ class RegisterPatientPart2 extends ConsumerWidget {
             );
           }).toList(),
         ),
-        const SizedBox(
-          height: 15,
-        ),
-        //Guardian legal
+        const SizedBox(height: 15),
         CustomDropdownFormField(
-            value: registerForm.relation_legal_guardian_patient.value.isNotEmpty
-                ? registerForm.relation_legal_guardian_patient.value
-                : null,
-            errorMessage: registerForm.isFormPosted
-                ? registerForm.relation_legal_guardian_patient.errorMessage
-                : null,
-            prefixIcon: const Icon(Icons.person),
-            label: 'Relación con el Paciente',
-            items: relations.map((relation) {
-              return DropdownMenuItem(
-                value: relation['value'],
-                child: Text(relation['name']!),
-              );
-            }).toList(),
-            hint: 'Seleccione su relación con el paciente',
-            onChanged: (value) {
-              final valueD = value ?? '';
-              ref
-                  .read(registerFormProvider.notifier)
-                  .onRelationLegalGuardianPatientChanged(valueD);
-            }),
-        const SizedBox(
-          height: 15,
+          value: registerForm.relation_legal_guardian_patient.value.isNotEmpty
+              ? registerForm.relation_legal_guardian_patient.value
+              : null,
+          errorMessage: registerForm.isFormPostedStep2
+              ? registerForm.relation_legal_guardian_patient.errorMessage
+              : null,
+          prefixIcon: Icon(Icons.family_restroom, color: colors.primary),
+          label: 'Relación con el Paciente',
+          items: relations.map((relation) {
+            return DropdownMenuItem(
+              value: relation['value'],
+              child: Text(relation['name']!),
+            );
+          }).toList(),
+          hint: 'Seleccione la relación',
+          onChanged: (value) {
+            final valueD = value ?? '';
+            ref
+                .read(registerFormProvider.notifier)
+                .onRelationLegalGuardianPatientChanged(valueD);
+          },
         ),
-        //Relacion con el guardian legal
+        const SizedBox(height: 15),
         CustomTextFormField(
-          initialValue: registerForm.firstname_user.value,
-          errorMessage: registerForm.isFormPosted
+          controller: guardianLegalController,
+          errorMessage: registerForm.isFormPostedStep2
               ? registerForm.guardian_legal_patient.errorMessage
               : null,
-          prefixIcon: const Icon(Icons.person),
+          prefixIcon: Icon(Icons.person_2_outlined, color: colors.primary),
           label: 'Guardián Legal',
-          hint: 'Ingrese el nombre de su guardián legal',
+          hint: 'Nombre del guardián legal',
           keyboardType: TextInputType.name,
           onChanged: ref
               .read(registerFormProvider.notifier)
               .onGuardianLegalPatientChanged,
         ),
-
-        const SizedBox(
-          height: 15,
-        ),
+        const SizedBox(height: 20),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            SizedBox(
-              height: 45,
-              width: 150,
-              child: FilledButton(
-                onPressed: () {
-                  if (currentPage < 1) {
-                    ref.read(pageControllerProvider.notifier).nextPage();
-                  } else {
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: CustomFilledButton(
+                  text: 'Anterior',
+                  isTonal: true,
+                  onPressed: () {
                     ref.read(pageControllerProvider.notifier).previousPage();
-                  }
-                },
-                style: ButtonStyle(
-                  backgroundColor: WidgetStateProperty.all(Colors.blue),
-                  shape: WidgetStateProperty.all(RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(40))),
+                  },
                 ),
-                child: const Text('Anterior',
-                    style: TextStyle(
-                        fontSize: 20,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold)),
               ),
             ),
-            const SizedBox(
-              width: 10,
-            ),
-            SizedBox(
-              height: 45,
-              width: 180,
-              child: FilledButton(
-                onPressed: () {
-                  ref.read(registerFormProvider.notifier).OnNextPage3();
-                  if (registerForm.isValid) {
-                    if (currentPage == 1) {
-                      ref.read(pageControllerProvider.notifier).nextPage();
-                    } else {
-                      ref.read(pageControllerProvider.notifier).previousPage();
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: CustomFilledButton(
+                  text: 'Siguiente',
+                  onPressed: () {
+                    // Primero validamos
+                    ref.read(registerFormProvider.notifier).OnNextPage3();
+
+                    // Verificamos específicamente la cédula
+                    if (registerForm.cedula_patient.error != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                              registerForm.cedula_patient.errorMessage ??
+                                  'Cédula inválida'),
+                          backgroundColor: Colors.red.shade300,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                      return;
                     }
-                  }
-                },
-                style: ButtonStyle(
-                  backgroundColor: WidgetStateProperty.all(Colors.blue),
-                  shape: WidgetStateProperty.all(RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(40))),
+
+                    // Verificamos el resto de campos
+                    if (!registerForm.isValid) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text(
+                              'Por favor, complete todos los campos correctamente'),
+                          backgroundColor: Colors.red.shade300,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                      return;
+                    }
+
+                    // Solo si todo es válido, avanzamos
+                    ref.read(pageControllerProvider.notifier).nextPage();
+                  },
                 ),
-                child: const Text('Siguiente',
-                    style: TextStyle(
-                        fontSize: 20,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold)),
               ),
             ),
           ],
         ),
-      ]),
+        const SizedBox(height: 10),
+      ],
     );
   }
 }

@@ -35,4 +35,9 @@ class AppointmentRepositoryImpl implements AppointmentRepository {
   Future<void> updateAppointment(Appointments appointment) {
     return datasource.updateAppointment(appointment);
   }
+
+  @override
+  Stream<List<Appointments>> streamAppointments(String patientId) {
+    return datasource.streamAppointments(patientId);
+  }
 }

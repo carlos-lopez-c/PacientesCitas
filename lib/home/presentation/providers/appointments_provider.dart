@@ -1,100 +1,83 @@
+import 'dart:async';
+import 'package:equatable/equatable.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fundacion_paciente_app/auth/infrastructure/errors/auth_errors.dart';
 import 'package:fundacion_paciente_app/auth/presentation/providers/auth_provider.dart';
 import 'package:fundacion_paciente_app/home/domain/entities/cita.entity.dart';
 import 'package:fundacion_paciente_app/home/domain/entities/registerCita.entity.dart';
-import 'package:fundacion_paciente_app/home/domain/repositories/appointment_repository.dart';
 import 'package:fundacion_paciente_app/home/infrastructure/repositories/appointment_repository_impl.dart';
 import 'package:fundacion_paciente_app/config/routes/app_routes.dart';
+import 'package:fundacion_paciente_app/home/domain/usecases/appointment_usecase.dart';
+import 'package:flutter/material.dart';
+import 'package:fundacion_paciente_app/shared/infrastructure/errors/custom_error.dart';
 
-// 🔹 Provider del estado de las citas médicas
+// 🔹 Provider del estado de citas médicas
 final appointmentProvider =
     StateNotifierProvider<AppointmentNotifier, AppointmentState>((ref) {
   final repository = AppointmentRepositoryImpl();
-  final patientId = ref.watch(authProvider).user!.patientID;
-  return AppointmentNotifier(repository, ref: ref, patientId: patientId);
+  final useCase = AppointmentUseCase(repository);
+  final patientId = ref.watch(authProvider).user?.patientID ?? '';
+  return AppointmentNotifier(useCase, ref, patientId);
 });
 
-// 🔹 Notifier que maneja el estado de las citas médicas
+// 🔹 Notifier que maneja el estado de citas médicas en tiempo real
 class AppointmentNotifier extends StateNotifier<AppointmentState> {
-  final AppointmentRepository repository;
+  final AppointmentUseCase _useCase;
   final Ref ref;
   final String patientId;
+  StreamSubscription<List<Appointments>>? _subscription;
 
-  AppointmentNotifier(this.repository,
-      {required this.ref, required this.patientId})
-      : super(AppointmentState(calendarioCitaSeleccionada: DateTime.now())) {
-    getAppointmentsByDate(state
-        .calendarioCitaSeleccionada); // ✅ Cargar citas del día actual al iniciar
-    getAppointments(); // ✅ Cargar todas las citas al iniciar
+  AppointmentNotifier(this._useCase, this.ref, this.patientId)
+      : super(AppointmentState()) {
+    if (patientId.isNotEmpty) {
+      _listenToAppointments(); // Escuchar cambios en tiempo real
+    }
   }
 
-  /// 🔹 Obtener todas las citas
-  Future<void> getAppointments() async {
-    try {
-      state = state.copyWith(loading: true);
-      print('🔹 Cargando todas las citas...');
-      final appointments = await repository.getAppointments(patientId);
-      state = state.copyWith(
-          loading: false, appointments: appointments, errorMessage: '');
-      print('✅ Citas cargadas: ${appointments.length}');
-    } on CustomError catch (e) {
-      print('Error al obtener las citas: $e');
-      state = state.copyWith(
-          loading: false, errorMessage: 'Error al obtener las citas');
-    }
+  /// 🔹 Escucha en tiempo real los cambios en Firestore
+  void _listenToAppointments() {
+    _subscription =
+        _useCase.streamAppointments(patientId).listen((appointments) {
+      state = state.copyWith(appointments: appointments);
+    });
+  }
+
+  /// 🔹 Manejo de errores centralizado
+  void _handleError(CustomError error) {
+    state = state.copyWith(loading: false, errorMessage: error.message);
   }
 
   /// 🔹 Obtener citas por fecha
   Future<void> getAppointmentsByDate(DateTime date) async {
     try {
-      print('🔹 Cargando citas por fecha...');
       state = state.copyWith(loading: true);
-      print('🔹 Buscando citas para la fecha: $date');
-
-      final formattedDate = date.toIso8601String().split('T')[0]; // YYYY-MM-DD
-      final appointments = await repository.getAppointmentsByDate(
-          DateTime.parse(formattedDate), patientId);
-
+      final appointments =
+          await _useCase.fetchAppointmentsByDate(date, patientId);
       state = state.copyWith(
         loading: false,
         appointmentsByDate: appointments,
         calendarioCitaSeleccionada: date,
       );
-
-      print('✅ Citas encontradas: ${appointments.length}');
     } on CustomError catch (e) {
-      state = state.copyWith(
-        loading: false,
-        errorMessage: 'Error al obtener citas por fecha',
-        appointmentsByDate: const [],
-      );
+      _handleError(e);
     }
   }
 
-  /// 🔹 Crear una nueva cita
-  Future<void> createAppointment(
-      CreateAppointments newAppointment, String patientName) async {
+  /// 🔹 Crear nueva cita con notificación UI
+  Future<void> createAppointment(CreateAppointments newAppointment,
+      String patientName, BuildContext context) async {
     try {
-      state = state.copyWith(loading: true);
-      print('🔹 Creando nueva cita...');
-
-      await repository.createAppointment(newAppointment, patientName);
-      print('✅ Cita creada exitosamente');
-      // 🔹 Recargar citas después de crear una nueva
-      await getAppointments();
+      state = state.copyWith(loading: true, errorMessage: '');
+      await _useCase.createAppointment(newAppointment, patientName);
       state = state.copyWith(
-          loading: false,
-          errorMessage: '',
-          successMessage: 'Cita creada exitosamente');
+          loading: false, successMessage: '✅ Cita creada exitosamente');
       ref.read(goRouterProvider).pop();
     } on CustomError catch (e) {
-      print('Error al crear la cita: ${e.message}');
       state = state.copyWith(
-          loading: false, errorMessage: 'Error al crear la cita: ' + e.message);
+          loading: false, errorMessage: e.message); // ✅ SOLO actualizar estado
     }
   }
 
+  /// 🔹 Cambiar fecha seleccionada y cargar citas por fecha
   void onDateSelected(DateTime date) async {
     state = state.copyWith(calendarioCitaSeleccionada: date);
     await getAppointmentsByDate(date);
@@ -104,10 +87,17 @@ class AppointmentNotifier extends StateNotifier<AppointmentState> {
   void selectAppointment(Appointments appointment) {
     state = state.copyWith(selectedAppointment: appointment);
   }
+
+  @override
+  void dispose() {
+    _subscription
+        ?.cancel(); // 🛑 Cancelar la suscripción cuando se elimine el Provider
+    super.dispose();
+  }
 }
 
-// 📌 Estado del provider de citas médicas
-class AppointmentState {
+// 📌 Estado del provider de citas médicas con Equatable
+class AppointmentState extends Equatable {
   final List<Appointments> appointments;
   final List<Appointments> appointmentsByDate;
   final Appointments? selectedAppointment;
@@ -124,8 +114,8 @@ class AppointmentState {
     this.loading = false,
     this.errorMessage = '',
     this.successMessage = '',
-  }) : calendarioCitaSeleccionada = calendarioCitaSeleccionada ??
-            DateTime.now(); // 🔹 Asigna un valor predeterminado
+  }) : calendarioCitaSeleccionada =
+            calendarioCitaSeleccionada ?? DateTime.now();
 
   AppointmentState copyWith({
     List<Appointments>? appointments,
@@ -147,4 +137,15 @@ class AppointmentState {
       errorMessage: errorMessage ?? this.errorMessage,
     );
   }
+
+  @override
+  List<Object?> get props => [
+        appointments,
+        appointmentsByDate,
+        selectedAppointment,
+        calendarioCitaSeleccionada,
+        loading,
+        errorMessage,
+        successMessage,
+      ];
 }

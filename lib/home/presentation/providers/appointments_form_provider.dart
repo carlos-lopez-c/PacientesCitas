@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fundacion_paciente_app/auth/infrastructure/errors/auth_errors.dart';
 import 'package:fundacion_paciente_app/auth/presentation/providers/auth_provider.dart';
 import 'package:fundacion_paciente_app/home/domain/entities/patient_entities.dart';
 import 'package:fundacion_paciente_app/home/domain/entities/registerCita.entity.dart';
@@ -8,9 +7,13 @@ import 'package:fundacion_paciente_app/home/domain/repositories/patient_reposito
 import 'package:fundacion_paciente_app/home/infrastructure/repositories/appointment_repository_impl.dart';
 import 'package:fundacion_paciente_app/home/infrastructure/repositories/patient_repository_impl.dart';
 import 'package:fundacion_paciente_app/home/presentation/providers/appointments_provider.dart';
+import 'package:fundacion_paciente_app/shared/infrastructure/errors/custom_error.dart';
+import 'package:fundacion_paciente_app/shared/presentation/widgets/snackbar.dart';
 import 'package:fundacion_paciente_app/type_therapy/domain/entities/type_therapy_entity.dart';
 import 'package:fundacion_paciente_app/type_therapy/domain/repositories/type_therapy_repository.dart';
 import 'package:fundacion_paciente_app/type_therapy/infrastructure/repositories/type_therapy_repository_impl.dart';
+import 'package:flutter/material.dart';
+import 'package:equatable/equatable.dart';
 
 // 🔹 Provider del formulario de citas
 final appointmentFormProvider = StateNotifierProvider.autoDispose<
@@ -22,109 +25,106 @@ final appointmentFormProvider = StateNotifierProvider.autoDispose<
         ref.watch(appointmentProvider.notifier).createAppointment;
     final typeTherapyRepo = TypeTherapyRepositoryImpl();
     final authState = ref.watch(authProvider);
+
     return AppointmentFormNotifier(
-        appointmentRepository: appointmentRepo,
-        patientRepository: patientRepo,
-        registerAppointmentCallback: registerAppointmentCallback,
-        typeTherapyRepository: typeTherapyRepo,
-        patientId: authState.user!.patientID);
+      appointmentRepository: appointmentRepo,
+      patientRepository: patientRepo,
+      registerAppointmentCallback: registerAppointmentCallback,
+      typeTherapyRepository: typeTherapyRepo,
+      patientId: authState.user?.patientID ?? '',
+    );
   },
 );
 
 // 🔹 Notifier que maneja el estado del formulario de citas
 class AppointmentFormNotifier extends StateNotifier<AppointmentFormState> {
-  final Function(CreateAppointments, String) registerAppointmentCallback;
+  final Function(CreateAppointments, String, BuildContext)
+      registerAppointmentCallback;
   final AppointmentRepository appointmentRepository;
   final PatientRepository patientRepository;
   final TypeTherapyRepository typeTherapyRepository;
 
-  AppointmentFormNotifier(
-      {required this.appointmentRepository,
-      required this.registerAppointmentCallback,
-      required this.patientRepository,
-      required String patientId,
-      required this.typeTherapyRepository})
-      : super(const AppointmentFormState()) {
+  AppointmentFormNotifier({
+    required this.appointmentRepository,
+    required this.registerAppointmentCallback,
+    required this.patientRepository,
+    required String patientId,
+    required this.typeTherapyRepository,
+  }) : super(const AppointmentFormState()) {
     if (patientId.isNotEmpty) {
       state = state.copyWith(patientId: patientId);
       getPatient();
     }
-    getTypeTherapics(); // ✅ Cargar áreas terapéuticas al iniciar
-
+    getTypeTherapics();
     initiaValues();
   }
 
-  // 🔹 Cambiar paciente manualmente
-  void onPatientChanged(String value) {
-    state = state.copyWith(patientId: value);
-  }
-
-  void onCedulaChanged(String value) {
-    state = state.copyWith(cedula: value);
-  }
-
-  Future<void> getTypeTherapics() async {
-    try {
-      print('🔹 Cargando áreas terapéuticas..');
-      final areas = await typeTherapyRepository.getTypeTherapies();
-      state = state.copyWith(areas: areas);
-      print('🔹 Áreas terapéuticas cargadas: ${areas.length}');
-    } catch (e) {
-      state = state.copyWith(
-          loading: false, errorMessage: 'Error al obtener áreas terapéuticas');
+  /// 🔹 Métodos `onChanged`
+  void onDateChanged(DateTime date) {
+    if (state.selectedDate != date) {
+      state = state.copyWith(selectedDate: date);
     }
   }
 
+  void onTimeChanged(String time) {
+    if (state.selectedTime != time) {
+      state = state.copyWith(selectedTime: time);
+    }
+  }
+
+  void onAreaChanged(String area) {
+    if (state.specialtyTherapyId != area) {
+      state = state.copyWith(specialtyTherapyId: area);
+    }
+  }
+
+  void onDiagnosisChanged(String diagnosis) {
+    if (state.diagnosis != diagnosis) {
+      state = state.copyWith(diagnosis: diagnosis);
+    }
+  }
+
+  /// 🔹 Obtener lista de áreas terapéuticas
+  Future<void> getTypeTherapics() async {
+    try {
+      final areas = await typeTherapyRepository.getTypeTherapies();
+      state = state.copyWith(areas: areas);
+    } on CustomError catch (e) {
+      state = state.copyWith(errorMessage: e.message);
+    }
+  }
+
+  /// 🔹 Obtener información del paciente
   Future<void> getPatient() async {
     try {
-      print('🔹 Cargando paciente con el id: ' + state.patientId);
       state = state.copyWith(loading: true);
       final patient = await patientRepository.getPatient(state.patientId);
       state = state.copyWith(patientEntity: patient, loading: false);
     } on CustomError catch (e) {
-      state = state.copyWith(loading: false, errorMessage: e.message);
+      state = state.copyWith(errorMessage: e.message, loading: false);
     }
   }
 
+  /// 🔹 Inicializar valores
   void initiaValues() {
-    state = state.copyWith(
-      selectedDate: DateTime.now(),
-    );
+    state = state.copyWith(selectedDate: DateTime.now());
   }
 
-  // 🔹 Cambiar diagnóstico
-  void onDiagnosisChanged(String value) {
-    state = state.copyWith(diagnosis: value);
-  }
-
-  // 🔹 Seleccionar Área
-  void onAreaChanged(String value) {
-    state = state.copyWith(specialtyTherapyId: value);
-  }
-
-  // 🔹 Seleccionar Fecha
-  void onDateChanged(DateTime value) {
-    state = state.copyWith(selectedDate: value);
-  }
-
-  // 🔹 Seleccionar Hora
-  void onTimeChanged(String value) {
-    state = state.copyWith(selectedTime: value);
-  }
-
-  // 🔹 Guardar Cita
-  Future<void> saveAppointment() async {
+  /// 🔹 Guardar Cita con notificación UI
+  Future<void> saveAppointment(BuildContext context) async {
     if (state.specialtyTherapyId == null ||
         state.selectedDate == null ||
         state.selectedTime == null ||
         state.patientId.isEmpty ||
         state.diagnosis.isEmpty) {
       state = state.copyWith(errorMessage: 'Todos los campos son obligatorios');
+
       return;
     }
 
     try {
-      state = state.copyWith(loading: true);
+      state = state.copyWith(
+          loading: true, successMessage: ''); // ✅ Reiniciar mensaje de éxito
 
       final newAppointment = CreateAppointments(
         date: state.selectedDate!,
@@ -134,25 +134,31 @@ class AppointmentFormNotifier extends StateNotifier<AppointmentFormState> {
         patientId: state.patientId,
         specialtyTherapyId: state.specialtyTherapyId!,
       );
-      print(state.patientEntity!.firstname);
-      print('🔹 Guardando cita...');
+
       final nombreCompleto =
-          state.patientEntity!.firstname + ' ' + state.patientEntity!.lastname;
+          '${state.patientEntity!.firstname} ${state.patientEntity!.lastname}';
       await registerAppointmentCallback(
-        newAppointment,
-        nombreCompleto,
-      );
-      state = state.copyWith(loading: false, errorMessage: '');
-      print('✅ Cita guardada correctamente');
-    } catch (e) {
-      state =
-          state.copyWith(loading: false, errorMessage: 'Error al guardar cita');
+          newAppointment, nombreCompleto, context);
+
+      state = state.copyWith(
+          loading: false,
+          successMessage: '✅ Cita registrada correctamente'); // ✅ Marcar éxito
+    } on CustomError catch (e) {
+      state = state.copyWith(errorMessage: e.message, loading: false);
     }
+  }
+
+  void clearErrorMessage() {
+    state = state.copyWith(errorMessage: '');
+  }
+
+  void clearSuccessMessage() {
+    state = state.copyWith(successMessage: '');
   }
 }
 
-// 📌 Estado del formulario de citas
-class AppointmentFormState {
+// 📌 Estado del formulario de citas con Equatable
+class AppointmentFormState extends Equatable {
   final String cedula;
   final String patientId;
   final Patient? patientEntity;
@@ -164,6 +170,7 @@ class AppointmentFormState {
   final bool isFormPosted;
   final bool loading;
   final String errorMessage;
+  final String successMessage; // ✅ Nueva bandera para éxito
 
   const AppointmentFormState({
     this.cedula = '',
@@ -177,6 +184,7 @@ class AppointmentFormState {
     this.isFormPosted = false,
     this.loading = false,
     this.errorMessage = '',
+    this.successMessage = '', // ✅ Inicializar en vacío
   });
 
   AppointmentFormState copyWith({
@@ -191,6 +199,7 @@ class AppointmentFormState {
     bool? loading,
     bool? isFormPosted,
     String? errorMessage,
+    String? successMessage, // ✅ Agregado en copyWith
   }) {
     return AppointmentFormState(
       cedula: cedula ?? this.cedula,
@@ -204,6 +213,24 @@ class AppointmentFormState {
       loading: loading ?? this.loading,
       isFormPosted: isFormPosted ?? this.isFormPosted,
       errorMessage: errorMessage ?? this.errorMessage,
+      successMessage:
+          successMessage ?? this.successMessage, // ✅ Mantener el valor
     );
   }
+
+  @override
+  List<Object?> get props => [
+        cedula,
+        patientId,
+        patientEntity,
+        diagnosis,
+        areas,
+        specialtyTherapyId,
+        selectedDate,
+        selectedTime,
+        loading,
+        isFormPosted,
+        errorMessage,
+        successMessage, // ✅ Agregar a `props`
+      ];
 }

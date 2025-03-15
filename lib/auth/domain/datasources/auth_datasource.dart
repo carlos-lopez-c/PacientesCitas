@@ -8,8 +8,9 @@ abstract class AuthDatasource {
   Future<User> checkAuthStatus();
   Future<void> logout();
   //forgot password
-  Future<void> sendCode(String email);
-  //validate code
-  Future<void> validateCode(String email, String code);
-  Future<void> resetPassword(String email, String token, String newPassword);
+  Future<void> sendPasswordResetEmail(String email);
+  // 2FA methods
+  Future<String> sendPhoneVerification(String phoneNumber);
+  Future<bool> verifyPhoneCode(String verificationId, String code);
+  Future<String> resendPhoneCode(String phoneNumber);
 }

@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 import 'package:fundacion_paciente_app/home/domain/datasources/appointment_datasource.dart';
 import 'package:fundacion_paciente_app/home/domain/entities/cita.entity.dart';
 import 'package:fundacion_paciente_app/home/domain/entities/registerCita.entity.dart';
+import 'package:fundacion_paciente_app/shared/infrastructure/errors/handle_error.dart';
 
 class AppointmentDatasourceImpl implements AppointmentDatasource {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -10,44 +12,48 @@ class AppointmentDatasourceImpl implements AppointmentDatasource {
   Future<void> createAppointment(
       CreateAppointments appointment, String patientName) async {
     try {
-      // Convierte el objeto appointment a un mapa
       Map<String, dynamic> appointmentData = appointment.toJson();
-      // Agrega el nombre del paciente al mapa\
-      print("Nombre del paciente: $patientName");
       appointmentData['patient'] = patientName;
-      // Agrega la cita a la colección "appointments" en Firestore
+
       await _firestore.collection('appointments').add(appointmentData);
       print("Cita creada correctamente en Firestore");
+    } on FirebaseException catch (e) {
+      throw FirebaseErrorHandler.handleFirebaseException(e);
+    } on PlatformException catch (e) {
+      throw FirebaseErrorHandler.handlePlatformException(e);
     } catch (e) {
-      print("Error al crear la cita: $e");
-      throw Exception('Error al crear la cita');
+      throw FirebaseErrorHandler.handleGenericException(e);
     }
   }
 
   @override
   Future<void> deleteAppointment(Appointments appointment) async {
     try {
-      // Elimina la cita por su ID
       await _firestore.collection('appointments').doc(appointment.id).delete();
       print("Cita eliminada correctamente en Firestore");
+    } on FirebaseException catch (e) {
+      throw FirebaseErrorHandler.handleFirebaseException(e);
+    } on PlatformException catch (e) {
+      throw FirebaseErrorHandler.handlePlatformException(e);
     } catch (e) {
-      print("Error al eliminar la cita: $e");
-      throw Exception('Error al eliminar la cita');
+      throw FirebaseErrorHandler.handleGenericException(e);
     }
   }
 
   @override
   Future<void> updateAppointment(Appointments appointment) async {
     try {
-      // Actualiza la cita por su ID
       await _firestore
           .collection('appointments')
           .doc(appointment.id)
           .update(appointment.toJson());
       print("Cita actualizada correctamente en Firestore");
+    } on FirebaseException catch (e) {
+      throw FirebaseErrorHandler.handleFirebaseException(e);
+    } on PlatformException catch (e) {
+      throw FirebaseErrorHandler.handlePlatformException(e);
     } catch (e) {
-      print("Error al actualizar la cita: $e");
-      throw Exception('Error al actualizar la cita');
+      throw FirebaseErrorHandler.handleGenericException(e);
     }
   }
 
@@ -55,49 +61,70 @@ class AppointmentDatasourceImpl implements AppointmentDatasource {
   Future<List<Appointments>> getAppointmentsByDate(
       DateTime date, String patientId) async {
     try {
-      // Formatea la fecha para que coincida con el formato almacenado en Firestore
       String formattedDate =
           "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
 
-      // Consulta las citas que coinciden con la fecha y el patientId proporcionados
       QuerySnapshot querySnapshot = await _firestore
           .collection('appointments')
           .where('date', isEqualTo: formattedDate)
           .where('patientID', isEqualTo: patientId)
           .get();
 
-      // Mapea los documentos obtenidos a objetos Appointments
       List<Appointments> appointments = querySnapshot.docs
           .map((doc) =>
               Appointments.fromJson(doc.data() as Map<String, dynamic>))
           .toList();
 
       return appointments;
+    } on FirebaseException catch (e) {
+      throw FirebaseErrorHandler.handleFirebaseException(e);
+    } on PlatformException catch (e) {
+      throw FirebaseErrorHandler.handlePlatformException(e);
     } catch (e) {
-      print("Error al obtener las citas: $e");
-      throw Exception('Error al obtener las citas');
+      throw FirebaseErrorHandler.handleGenericException(e);
     }
   }
 
   @override
   Future<List<Appointments>> getAppointments(String patientId) async {
     try {
-      // Obtiene todas las citas de la colección "appointments"
       QuerySnapshot querySnapshot = await _firestore
           .collection('appointments')
           .where('patientID', isEqualTo: patientId)
           .get();
 
-      // Mapea los documentos obtenidos a objetos Appointments
       List<Appointments> appointments = querySnapshot.docs
           .map((doc) =>
               Appointments.fromJson(doc.data() as Map<String, dynamic>))
           .toList();
 
       return appointments;
+    } on FirebaseException catch (e) {
+      throw FirebaseErrorHandler.handleFirebaseException(e);
+    } on PlatformException catch (e) {
+      throw FirebaseErrorHandler.handlePlatformException(e);
     } catch (e) {
-      print("Error al obtener las citas: $e");
-      throw Exception('Error al obtener las citas');
+      throw FirebaseErrorHandler.handleGenericException(e);
+    }
+  }
+
+  @override
+  Stream<List<Appointments>> streamAppointments(String patientId) {
+    try {
+      return _firestore
+          .collection('appointments')
+          .where('patientID', isEqualTo: patientId)
+          .snapshots()
+          .map((snapshot) => snapshot.docs
+              .map((doc) =>
+                  Appointments.fromJson(doc.data() as Map<String, dynamic>))
+              .toList());
+    } on FirebaseException catch (e) {
+      throw FirebaseErrorHandler.handleFirebaseException(e);
+    } on PlatformException catch (e) {
+      throw FirebaseErrorHandler.handlePlatformException(e);
+    } catch (e) {
+      throw FirebaseErrorHandler.handleGenericException(e);
     }
   }
 }

@@ -26,22 +26,27 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<void> sendCode(String email) {
-    return authDatasource.sendCode(email);
-  }
-
-  @override
-  Future<void> validateCode(String email, String code) {
-    return authDatasource.validateCode(email, code);
-  }
-
-  @override
-  Future<void> resetPassword(String email, String token, String newPassword) {
-    return authDatasource.resetPassword(email, token, newPassword);
+  Future<void> sendPasswordResetEmail(String email) {
+    return authDatasource.sendPasswordResetEmail(email);
   }
 
   @override
   Future<void> logout() {
     return authDatasource.logout();
+  }
+
+  @override
+  Future<String> sendPhoneVerification(String phoneNumber) {
+    return authDatasource.sendPhoneVerification(phoneNumber);
+  }
+
+  @override
+  Future<bool> verifyPhoneCode(String verificationId, String code) {
+    return authDatasource.verifyPhoneCode(verificationId, code);
+  }
+
+  @override
+  Future<String> resendPhoneCode(String phoneNumber) {
+    return authDatasource.resendPhoneCode(phoneNumber);
   }
 }

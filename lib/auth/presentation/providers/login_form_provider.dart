@@ -14,11 +14,21 @@ final formularioProvider =
 
 class FormularioNotifier extends StateNotifier<FormularioState> {
   final Function(String, String) loginUserCallback;
+  bool _isDisposed = false;
+
   FormularioNotifier({
     required this.loginUserCallback,
   }) : super(const FormularioState());
 
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
+  }
+
   void onEmailChanged(String value) {
+    if (_isDisposed) return;
+
     final newEmail = Email.dirty(value);
     state = state.copyWith(
       email: newEmail,
@@ -27,6 +37,8 @@ class FormularioNotifier extends StateNotifier<FormularioState> {
   }
 
   void onPasswordChanged(String value) {
+    if (_isDisposed) return;
+
     final newPassword = Password.dirty(value);
     state = state.copyWith(
       password: newPassword,
@@ -35,6 +47,8 @@ class FormularioNotifier extends StateNotifier<FormularioState> {
   }
 
   Future<void> onFormSubmit() async {
+    if (_isDisposed) return;
+
     _touchEveryField();
 
     if (!state.isValid) return;
@@ -42,16 +56,21 @@ class FormularioNotifier extends StateNotifier<FormularioState> {
     state = state.copyWith(isPosting: true);
 
     try {
-      // Simula un proceso de envío
       await loginUserCallback(state.email.value, state.password.value);
     } catch (e) {
-      print('Error al enviar el formulario: $e');
+      if (!_isDisposed) {
+        print('Error al enviar el formulario: $e');
+      }
     } finally {
-      state = state.copyWith(isPosting: false);
+      if (!_isDisposed) {
+        state = state.copyWith(isPosting: false);
+      }
     }
   }
 
   void _touchEveryField() {
+    if (_isDisposed) return;
+
     final email = Email.dirty(state.email.value);
     final password = Password.dirty(state.password.value);
 

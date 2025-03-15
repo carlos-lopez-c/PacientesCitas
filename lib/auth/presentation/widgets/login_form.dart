@@ -2,71 +2,70 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fundacion_paciente_app/auth/presentation/providers/login_form_provider.dart';
 import 'package:fundacion_paciente_app/shared/presentation/widgets/custom_text_form_fiield.dart';
+import 'package:fundacion_paciente_app/shared/presentation/widgets/custom_filled_button.dart';
 
-class LoginForm extends ConsumerWidget {
+class LoginForm extends ConsumerStatefulWidget {
   const LoginForm({
     super.key,
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LoginForm> createState() => _LoginFormState();
+}
+
+class _LoginFormState extends ConsumerState<LoginForm> {
+  bool _showPassword = false;
+
+  @override
+  Widget build(BuildContext context) {
     final loginForm = ref.watch(formularioProvider);
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 30),
-        child: Column(
-          children: [
-            CustomTextFormField(
-              prefixIcon: const Icon(Icons.email),
-              errorMessage:
-                  loginForm.isFormPosted ? loginForm.email.errorMessage : null,
-              label: 'Correo Electrónico',
-              hint: 'Ingrese su correo electrónico',
-              obscureText: false,
-              keyboardType: TextInputType.emailAddress,
-              onChanged: ref.read(formularioProvider.notifier).onEmailChanged,
-            ),
-            const SizedBox(
-              height: 20,
-            ),
-            CustomTextFormField(
-              errorMessage: loginForm.isFormPosted
-                  ? loginForm.password.errorMessage
-                  : null,
-              obscureText: true,
-              prefixIcon: const Icon(Icons.lock),
-              label: 'Contraseña',
-              hint: 'Ingrese su contraseña',
-              keyboardType: TextInputType.visiblePassword,
-              onChanged:
-                  ref.read(formularioProvider.notifier).onPasswordChanged,
-            ),
-            const SizedBox(
-              height: 30,
-            ),
-            SizedBox(
-              height: 50,
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () {
-                  loginForm.isPosting
-                      ? null
-                      : ref.read(formularioProvider.notifier).onFormSubmit();
-                },
-                style: ButtonStyle(
-                  backgroundColor: WidgetStateProperty.all(Colors.blue),
-                  shape: WidgetStateProperty.all(RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(40))),
-                ),
-                child: const Text('Ingresar',
-                    style: TextStyle(
-                        fontSize: 20,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold)),
+    final colors = Theme.of(context).colorScheme;
+
+    return Form(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          CustomTextFormField(
+            prefixIcon: Icon(Icons.email_outlined, color: colors.primary),
+            errorMessage:
+                loginForm.isFormPosted ? loginForm.email.errorMessage : null,
+            label: 'Correo Electrónico',
+            hint: 'ejemplo@correo.com',
+            keyboardType: TextInputType.emailAddress,
+            onChanged: ref.read(formularioProvider.notifier).onEmailChanged,
+          ),
+          const SizedBox(height: 20),
+          CustomTextFormField(
+            prefixIcon: Icon(Icons.lock_outline, color: colors.primary),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _showPassword ? Icons.visibility_off : Icons.visibility,
+                color: colors.primary,
               ),
+              onPressed: () {
+                setState(() {
+                  _showPassword = !_showPassword;
+                });
+              },
             ),
-          ],
-        ),
+            errorMessage:
+                loginForm.isFormPosted ? loginForm.password.errorMessage : null,
+            obscureText: !_showPassword,
+            label: 'Contraseña',
+            hint: '••••••••',
+            onChanged: ref.read(formularioProvider.notifier).onPasswordChanged,
+          ),
+          const SizedBox(height: 30),
+          CustomFilledButton(
+            text: 'INICIAR SESIÓN',
+            onPressed: loginForm.isPosting
+                ? null
+                : () {
+                    ref.read(formularioProvider.notifier).onFormSubmit();
+                  },
+            isLoading: loginForm.isPosting,
+          ),
+        ],
       ),
     );
   }

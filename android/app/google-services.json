@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "319158977737",
+    "firebase_url": "https://hctssapp-default-rtdb.firebaseio.com",
     "project_id": "hctssapp",
     "storage_bucket": "hctssapp.firebasestorage.app"
   },

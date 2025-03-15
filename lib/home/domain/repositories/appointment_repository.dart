@@ -9,4 +9,5 @@ abstract class AppointmentRepository {
       CreateAppointments appointment, String patientName);
   Future<void> updateAppointment(Appointments appointment);
   Future<void> deleteAppointment(Appointments appointment);
+  Stream<List<Appointments>> streamAppointments(String patientId);
 }
