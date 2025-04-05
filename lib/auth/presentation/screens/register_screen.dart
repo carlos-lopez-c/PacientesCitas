@@ -3,6 +3,7 @@ import 'package:fundacion_paciente_app/auth/presentation/widgets/register_contro
 import 'package:fundacion_paciente_app/shared/presentation/widgets/header.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fundacion_paciente_app/auth/presentation/providers/register_form_provider.dart';
+import 'package:fundacion_paciente_app/auth/presentation/providers/page_register.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   static const name = 'register-screen';
@@ -13,6 +14,15 @@ class RegisterScreen extends ConsumerStatefulWidget {
 }
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Reiniciar el controlador de páginas al montar la pantalla
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(pageControllerProvider.notifier).reset();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;

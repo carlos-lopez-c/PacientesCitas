@@ -6,6 +6,7 @@ import 'package:fundacion_paciente_app/auth/domain/entities/user_entities.dart';
 import 'package:fundacion_paciente_app/auth/domain/entities/user_information_entities.dart';
 import 'package:fundacion_paciente_app/auth/domain/entities/user_register.dart';
 import 'package:fundacion_paciente_app/shared/infrastructure/errors/handle_error.dart';
+import 'package:fundacion_paciente_app/shared/infrastructure/errors/custom_error.dart';
 import 'dart:async';
 import 'dart:math';
 
@@ -59,7 +60,6 @@ class FirebaseAuthDatasource implements AuthDatasource {
                 'Se requiere un número de teléfono para la autenticación de dos factores.');
       }
 
-      // Ya no cerramos sesión aquí, lo haremos después de enviar el código
       return userData;
     } on firebase_auth.FirebaseAuthException catch (e) {
       throw FirebaseErrorHandler.handleFirebaseAuthException(e);
@@ -174,7 +174,11 @@ class FirebaseAuthDatasource implements AuthDatasource {
         },
         verificationFailed: (firebase_auth.FirebaseAuthException e) {
           print('Error de verificación: ${e.message}');
-          if (!completer.isCompleted) completer.completeError(e);
+          if (!completer.isCompleted) {
+            final customError =
+                FirebaseErrorHandler.handleFirebaseAuthException(e);
+            completer.completeError(customError);
+          }
         },
         codeSent: (String id, int? resendToken) {
           print('Código enviado. ID: $id');
@@ -195,8 +199,12 @@ class FirebaseAuthDatasource implements AuthDatasource {
       }
 
       return verificationId;
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      print('Error en sendPhoneVerification: $e');
+      throw FirebaseErrorHandler.handleFirebaseAuthException(e);
     } catch (e) {
       print('Error en sendPhoneVerification: $e');
+      if (e is CustomError) throw e;
       throw FirebaseErrorHandler.handleGenericException(e);
     }
   }
@@ -209,9 +217,14 @@ class FirebaseAuthDatasource implements AuthDatasource {
         smsCode: code,
       );
 
-      // Aquí es donde realmente completamos la autenticación
       await _firebaseAuth.signInWithCredential(credential);
       return true;
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      throw FirebaseErrorHandler.handleFirebaseAuthException(e);
+    } on FirebaseException catch (e) {
+      throw FirebaseErrorHandler.handleFirebaseException(e);
+    } on PlatformException catch (e) {
+      throw FirebaseErrorHandler.handlePlatformException(e);
     } catch (e) {
       throw FirebaseErrorHandler.handleGenericException(e);
     }

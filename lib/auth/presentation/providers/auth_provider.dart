@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fundacion_paciente_app/auth/domain/entities/user_entities.dart';
 import 'package:fundacion_paciente_app/auth/domain/entities/user_register.dart';
@@ -7,6 +6,7 @@ import 'package:fundacion_paciente_app/auth/infrastructure/repositories/auth_rep
 import 'package:fundacion_paciente_app/config/routes/app_routes.dart';
 import 'package:fundacion_paciente_app/shared/infrastructure/services/key_value_storage_service.dart';
 import 'package:fundacion_paciente_app/shared/infrastructure/services/key_value_storage_service_impl.dart';
+import 'package:fundacion_paciente_app/shared/infrastructure/errors/custom_error.dart';
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final authRepository = AuthRepositoryImpl();
@@ -26,6 +26,8 @@ class AuthState {
   final String errorMessage;
   final String? verificationId;
   final String? phoneNumber;
+  final bool isLoading;
+  final bool isRegisterLoading;
 
   AuthState({
     this.authStatus = AuthStatus.checking,
@@ -33,6 +35,8 @@ class AuthState {
     this.errorMessage = '',
     this.verificationId,
     this.phoneNumber,
+    this.isLoading = false,
+    this.isRegisterLoading = false,
   });
 
   AuthState copyWith({
@@ -41,6 +45,8 @@ class AuthState {
     String? errorMessage,
     String? verificationId,
     String? phoneNumber,
+    bool? isLoading,
+    bool? isRegisterLoading,
   }) =>
       AuthState(
         authStatus: authStatus ?? this.authStatus,
@@ -48,6 +54,8 @@ class AuthState {
         errorMessage: errorMessage ?? this.errorMessage,
         verificationId: verificationId ?? this.verificationId,
         phoneNumber: phoneNumber ?? this.phoneNumber,
+        isLoading: isLoading ?? this.isLoading,
+        isRegisterLoading: isRegisterLoading ?? this.isRegisterLoading,
       );
 }
 
@@ -60,14 +68,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required this.authRepository,
     required this.keyValueStorageService,
     required this.ref,
-  }) : super(AuthState()) {
-    checkAuthStatus();
-  }
+  }) : super(AuthState(authStatus: AuthStatus.notAuthenticated));
 
   Future<void> loginUser(String email, String password) async {
     try {
       state = state.copyWith(
-        authStatus: AuthStatus.checking,
+        isLoading: true,
         errorMessage: '',
         user: null,
         verificationId: null,
@@ -76,34 +82,35 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       final user = await authRepository.login(email, password);
 
-      // Verificar si se requiere autenticación de dos pasos
       if (user.userInformation.phone != null &&
           user.userInformation.phone!.isNotEmpty) {
-        // Si el usuario tiene teléfono registrado, enviamos el código para 2FA
         final verificationId =
             await sendPhoneVerification(user.userInformation.phone!);
+
         state = state.copyWith(
           user: user,
           authStatus: AuthStatus.requires2FA,
           phoneNumber: user.userInformation.phone,
           verificationId: verificationId,
+          isLoading: false,
         );
       } else {
-        // Si no tiene teléfono, cerrar sesión y mostrar error
         await logout();
         state = state.copyWith(
           authStatus: AuthStatus.notAuthenticated,
           errorMessage:
               'Se requiere un número de teléfono para la autenticación de dos factores',
+          isLoading: false,
         );
       }
-    } catch (e) {
+    } on CustomError catch (e) {
       state = state.copyWith(
         authStatus: AuthStatus.notAuthenticated,
-        errorMessage: e.toString(),
+        errorMessage: e.message,
         user: null,
         verificationId: null,
         phoneNumber: null,
+        isLoading: false,
       );
     }
   }
@@ -111,18 +118,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<String> sendPhoneVerification(String phoneNumber) async {
     try {
       state = state.copyWith(
-        authStatus: AuthStatus.checking,
+        isLoading: true,
         errorMessage: '',
       );
 
       final verificationId =
           await authRepository.sendPhoneVerification(phoneNumber);
       return verificationId;
-    } catch (e) {
+    } on CustomError catch (e) {
       state = state.copyWith(
         authStatus: AuthStatus.requires2FA,
-        errorMessage:
-            'Error al enviar el código de verificación: ${e.toString()}',
+        errorMessage: e.message,
+        isLoading: false,
       );
       throw e;
     }
@@ -131,11 +138,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> verifyPhoneCode(String code) async {
     try {
       if (state.verificationId == null) {
-        throw Exception('No hay ID de verificación disponible');
+        throw CustomError('No hay ID de verificación disponible');
       }
 
       state = state.copyWith(
-        authStatus: AuthStatus.checking,
+        isLoading: true,
         errorMessage: '',
       );
 
@@ -150,12 +157,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = state.copyWith(
           authStatus: AuthStatus.requires2FA,
           errorMessage: 'Código de verificación inválido',
+          isLoading: false,
         );
       }
-    } catch (e) {
+    } on CustomError catch (e) {
       state = state.copyWith(
         authStatus: AuthStatus.requires2FA,
-        errorMessage: 'Error al verificar el código: ${e.toString()}',
+        errorMessage: e.message,
+        isLoading: false,
       );
     }
   }
@@ -163,11 +172,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> resendPhoneCode() async {
     try {
       if (state.phoneNumber == null) {
-        throw Exception('No hay un número de teléfono registrado');
+        throw CustomError('No hay un número de teléfono registrado');
       }
 
       state = state.copyWith(
-        authStatus: AuthStatus.checking,
+        isLoading: true,
         errorMessage: '',
       );
 
@@ -177,60 +186,70 @@ class AuthNotifier extends StateNotifier<AuthState> {
         authStatus: AuthStatus.requires2FA,
         verificationId: verificationId,
         errorMessage: '',
+        isLoading: false,
       );
-    } catch (e) {
+    } on CustomError catch (e) {
       state = state.copyWith(
         authStatus: AuthStatus.requires2FA,
-        errorMessage: 'Error al reenviar el código: ${e.toString()}',
+        errorMessage: e.message,
+        isLoading: false,
       );
     }
   }
 
-  Future<void> registerUser(RequestData register) async {
+  Future<bool> registerUser(RequestData register) async {
     try {
       state = state.copyWith(
-        authStatus: AuthStatus.checking,
+        isRegisterLoading: true,
         errorMessage: '',
+        authStatus: state.authStatus,
       );
 
       await authRepository.register(register);
-      ref.read(goRouterProvider).go('/login');
-    } catch (e) {
+
       state = state.copyWith(
+        isRegisterLoading: false,
+        errorMessage: '',
         authStatus: AuthStatus.notAuthenticated,
-        errorMessage: e.toString(),
       );
+
+      return true;
+    } on CustomError catch (e) {
+      state = state.copyWith(
+        errorMessage: e.message,
+        isRegisterLoading: false,
+        authStatus: AuthStatus.notAuthenticated,
+      );
+      return false;
     }
   }
 
   void checkAuthStatus() async {
     try {
       state = state.copyWith(
-        authStatus: AuthStatus.checking,
+        isLoading: true,
         errorMessage: '',
       );
 
       final user = await authRepository.checkAuthStatus();
 
-      // Verificar si el usuario tiene teléfono registrado
       if (user.userInformation.phone != null &&
           user.userInformation.phone!.isNotEmpty) {
-        // Si tiene teléfono, requiere 2FA
         state = state.copyWith(
           user: user,
           authStatus: AuthStatus.requires2FA,
           phoneNumber: user.userInformation.phone,
+          isLoading: false,
         );
-        // Enviar el código de verificación
         final verificationId =
             await sendPhoneVerification(user.userInformation.phone!);
         state = state.copyWith(verificationId: verificationId);
       } else {
-        // Si no tiene teléfono, cerrar sesión
         await logout();
       }
-    } catch (e) {
-      logout();
+    } on CustomError catch (e) {
+      print("Error al verificar el estado de autenticación: $e");
+      logout(e.message);
     }
   }
 
@@ -241,6 +260,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       errorMessage: '',
       verificationId: null,
       phoneNumber: null,
+      isLoading: false,
     );
   }
 
@@ -253,14 +273,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
         errorMessage: errorMessage ?? '',
         verificationId: null,
         phoneNumber: null,
+        isLoading: false,
       );
-    } catch (e) {
+    } on CustomError catch (e) {
       state = state.copyWith(
         authStatus: AuthStatus.notAuthenticated,
         user: null,
-        errorMessage: 'Error al cerrar sesión: ${e.toString()}',
+        errorMessage: e.message,
         verificationId: null,
         phoneNumber: null,
+        isLoading: false,
       );
     }
   }

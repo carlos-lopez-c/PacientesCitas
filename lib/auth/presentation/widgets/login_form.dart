@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fundacion_paciente_app/auth/presentation/providers/auth_provider.dart';
 import 'package:fundacion_paciente_app/auth/presentation/providers/login_form_provider.dart';
 import 'package:fundacion_paciente_app/shared/presentation/widgets/custom_text_form_fiield.dart';
 import 'package:fundacion_paciente_app/shared/presentation/widgets/custom_filled_button.dart';
@@ -19,6 +20,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
   @override
   Widget build(BuildContext context) {
     final loginForm = ref.watch(formularioProvider);
+    final authState = ref.watch(authProvider);
     final colors = Theme.of(context).colorScheme;
 
     return Form(
@@ -58,12 +60,12 @@ class _LoginFormState extends ConsumerState<LoginForm> {
           const SizedBox(height: 30),
           CustomFilledButton(
             text: 'INICIAR SESIÓN',
-            onPressed: loginForm.isPosting
+            onPressed: (loginForm.isPosting || authState.isLoading)
                 ? null
                 : () {
                     ref.read(formularioProvider.notifier).onFormSubmit();
                   },
-            isLoading: loginForm.isPosting,
+            isLoading: loginForm.isPosting || authState.isLoading,
           ),
         ],
       ),

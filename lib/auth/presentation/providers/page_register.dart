@@ -37,6 +37,10 @@ class PageControllerNotifier extends StateNotifier<PageState> {
       state = state.copyWith(currentPage: page);
     }
   }
+
+  void reset() {
+    state = PageState();
+  }
 }
 
 final pageControllerProvider =

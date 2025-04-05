@@ -13,6 +13,7 @@ class PasswordResetState {
   final bool isFormPosted;
   final bool isValid;
   final String errorMessage;
+  final String? successMessage;
 
   const PasswordResetState({
     this.email = const Email.pure(),
@@ -20,6 +21,7 @@ class PasswordResetState {
     this.isFormPosted = false,
     this.isValid = false,
     this.errorMessage = '',
+    this.successMessage,
   });
 
   PasswordResetState copyWith({
@@ -28,6 +30,7 @@ class PasswordResetState {
     bool? isFormPosted,
     bool? isValid,
     String? errorMessage,
+    String? successMessage,
   }) {
     return PasswordResetState(
       email: email ?? this.email,
@@ -35,6 +38,7 @@ class PasswordResetState {
       isFormPosted: isFormPosted ?? this.isFormPosted,
       isValid: isValid ?? this.isValid,
       errorMessage: errorMessage ?? this.errorMessage,
+      successMessage: successMessage ?? this.successMessage,
     );
   }
 }
@@ -62,14 +66,21 @@ class PasswordResetNotifier extends StateNotifier<PasswordResetState> {
     if (!state.isValid) return;
 
     try {
-      state = state.copyWith(isSubmitting: true);
+      state = state.copyWith(isSubmitting: true, errorMessage: '');
       await authRepository.sendPasswordResetEmail(state.email.value);
 
+      // Mostrar mensaje de éxito en lugar de redireccionar
       state = state.copyWith(
         isSubmitting: false,
         errorMessage: '',
+        isFormPosted: false,
+        // Reiniciamos el email para permitir enviar de nuevo si es necesario
+        email: const Email.pure(),
       );
-      ref.read(goRouterProvider).push('/login');
+
+      // Aquí no redirigimos, simplemente mostramos un mensaje de éxito
+      // que se manejará en la UI
+      showSuccessMessage();
     } on CustomError catch (e) {
       state = state.copyWith(isSubmitting: false, errorMessage: e.message);
     } catch (e) {
@@ -88,6 +99,15 @@ class PasswordResetNotifier extends StateNotifier<PasswordResetState> {
       isFormPosted: true,
       email: email,
       isValid: Formz.validate([email]),
+    );
+  }
+
+  // Nuevo método para mostrar mensaje de éxito
+  void showSuccessMessage() {
+    state = state.copyWith(
+      errorMessage: '',
+      successMessage:
+          'Se ha enviado un correo de restablecimiento a ${state.email.value}. Por favor, revisa tu bandeja de entrada.',
     );
   }
 }

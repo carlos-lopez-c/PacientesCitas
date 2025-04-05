@@ -118,36 +118,78 @@ class ForgotPasswordScreen extends ConsumerWidget {
                                 textAlign: TextAlign.center,
                               ),
                             ),
-                          CustomTextFormField(
-                            prefixIcon: Icon(Icons.email_outlined,
-                                color: colors.primary),
-                            errorMessage: passwordResetState.isFormPosted
-                                ? passwordResetState.email.errorMessage
-                                : null,
-                            label: 'Correo Electrónico',
-                            hint: 'ejemplo@correo.com',
-                            keyboardType: TextInputType.emailAddress,
-                            onChanged: notifier.onEmailChanged,
-                          ),
-                          const SizedBox(height: 30),
-                          CustomFilledButton(
-                            text: 'ENVIAR INSTRUCCIONES',
-                            onPressed: () {
-                              notifier.sendPasswordResetEmail();
-                            },
-                            isLoading: passwordResetState.isSubmitting,
-                          ),
-                          if (passwordResetState.isSubmitting)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 20),
-                              child: Text(
-                                'Enviando instrucciones...',
-                                style: TextStyle(
-                                  color: colors.primary,
-                                  fontSize: 14,
+
+                          // Mensaje de éxito
+                          if (passwordResetState.successMessage != null)
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              margin: const EdgeInsets.only(bottom: 20),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade50,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: Colors.green.shade200,
                                 ),
                               ),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.check_circle,
+                                    color: Colors.green.shade600,
+                                    size: 40,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    passwordResetState.successMessage!,
+                                    style: TextStyle(
+                                      color: Colors.green.shade700,
+                                      fontSize: 14,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  TextButton(
+                                    onPressed: () => context.pop(),
+                                    child: const Text(
+                                        'Volver al inicio de sesión'),
+                                  ),
+                                ],
+                              ),
                             ),
+
+                          // Solo mostrar el formulario si no hay mensaje de éxito
+                          if (passwordResetState.successMessage == null) ...[
+                            CustomTextFormField(
+                              prefixIcon: Icon(Icons.email_outlined,
+                                  color: colors.primary),
+                              errorMessage: passwordResetState.isFormPosted
+                                  ? passwordResetState.email.errorMessage
+                                  : null,
+                              label: 'Correo Electrónico',
+                              hint: 'ejemplo@correo.com',
+                              keyboardType: TextInputType.emailAddress,
+                              onChanged: notifier.onEmailChanged,
+                            ),
+                            const SizedBox(height: 30),
+                            CustomFilledButton(
+                              text: 'ENVIAR INSTRUCCIONES',
+                              onPressed: () {
+                                notifier.sendPasswordResetEmail();
+                              },
+                              isLoading: passwordResetState.isSubmitting,
+                            ),
+                            if (passwordResetState.isSubmitting)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 20),
+                                child: Text(
+                                  'Enviando instrucciones...',
+                                  style: TextStyle(
+                                    color: colors.primary,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ],
                       ),
                     ),

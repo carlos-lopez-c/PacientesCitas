@@ -16,16 +16,26 @@ class HomeScreen extends ConsumerWidget {
     final colors = Theme.of(context).colorScheme;
     final authState = ref.watch(authProvider);
 
-    // Verificar si el usuario está autenticado
+    // Ya no necesitamos la redirección manual aquí porque el GoRouter se encargará automáticamente
+    // El usuario no autenticado será redirigido a login por el router
+
+    // En lugar de verificar y redirigir, simplemente mostramos un indicador de carga
+    // mientras esperamos que el GoRouter haga su trabajo
     if (authState.authStatus != AuthStatus.authenticated ||
         authState.user == null) {
-      // Redirigir al login si no está autenticado
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.go('/login');
-      });
-      return const Scaffold(
+      return Scaffold(
         body: Center(
-          child: CircularProgressIndicator(),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 20),
+              Text(
+                'Verificando autenticación...',
+                style: TextStyle(color: colors.primary),
+              ),
+            ],
+          ),
         ),
       );
     }

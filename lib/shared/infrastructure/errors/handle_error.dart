@@ -6,26 +6,53 @@ import 'custom_error.dart';
 class FirebaseErrorHandler {
   static CustomError handleFirebaseAuthException(FirebaseAuthException e) {
     switch (e.code) {
-      case 'invalid-email':
-        return CustomError('El correo electrónico no es válido.', code: e.code);
-      case 'user-disabled':
-        return CustomError('El usuario ha sido deshabilitado.', code: e.code);
-      case 'user-not-found':
-        return CustomError('No se encontró una cuenta con este correo.',
+      case 'invalid-credential':
+        return CustomError(
+            'El correo electrónico o la contraseña son incorrectos',
             code: e.code);
+      case 'invalid-email':
+        return CustomError('Correo electrónico inválido', code: e.code);
+      case 'user-not-found':
+        return CustomError('Usuario no encontrado', code: e.code);
       case 'wrong-password':
-        return CustomError('Contraseña incorrecta.', code: e.code);
+        return CustomError('Usuario o contraseña incorrecta', code: e.code);
+      case 'user-disabled':
+        return CustomError(
+            'Tu cuenta ha sido deshabilitada. Por favor, contacta a soporte.',
+            code: e.code);
       case 'email-already-in-use':
-        return CustomError('Este correo ya está en uso.', code: e.code);
+        return CustomError(
+            'Este correo ya está registrado. Por favor, inicia sesión.',
+            code: e.code);
       case 'weak-password':
-        return CustomError('La contraseña es demasiado débil.', code: e.code);
+        return CustomError('La contraseña debe tener al menos 6 caracteres',
+            code: e.code);
       case 'operation-not-allowed':
-        return CustomError('Esta operación no está permitida.', code: e.code);
+        return CustomError(
+            'Operación no permitida. Por favor, intenta más tarde.',
+            code: e.code);
       case 'too-many-requests':
-        return CustomError('Demasiados intentos. Inténtelo más tarde.',
+        return CustomError(
+            'Demasiados intentos. Por favor, espera unos minutos antes de intentar nuevamente.',
+            code: e.code);
+      case 'invalid-verification-code':
+        return CustomError(
+            'El código de verificación es incorrecto. Por favor, revisa e intenta nuevamente.',
+            code: e.code);
+      case 'invalid-verification-id':
+        return CustomError(
+            'La sesión de verificación ha expirado. Por favor, solicita un nuevo código.',
+            code: e.code);
+      case 'code-expired':
+        return CustomError(
+            'El código ha expirado. Por favor, solicita uno nuevo.',
+            code: e.code);
+      case 'requires-2fa':
+        return CustomError('Se requiere verificación de dos factores.',
             code: e.code);
       default:
-        return CustomError('Error de autenticación: ${e.message}',
+        return CustomError(
+            'Ha ocurrido un error. Por favor, intenta nuevamente.',
             code: e.code);
     }
   }
@@ -36,31 +63,49 @@ class FirebaseErrorHandler {
         return CustomError('No tienes permisos para realizar esta acción.',
             code: e.code);
       case 'not-found':
-        return CustomError('El documento solicitado no existe.', code: e.code);
+        return CustomError('No se encontró la información solicitada.',
+            code: e.code);
       case 'unavailable':
-        return CustomError('El servicio no está disponible temporalmente.',
+        return CustomError(
+            'Servicio no disponible. Por favor, intenta más tarde.',
             code: e.code);
       case 'deadline-exceeded':
-        return CustomError('El tiempo de espera ha expirado.', code: e.code);
+        return CustomError(
+            'La operación tardó demasiado. Por favor, intenta nuevamente.',
+            code: e.code);
       case 'already-exists':
-        return CustomError('El documento ya existe en Firestore.',
+        return CustomError('Esta información ya existe en el sistema.',
             code: e.code);
       case 'cancelled':
         return CustomError('La operación fue cancelada.', code: e.code);
       case 'invalid-argument':
-        return CustomError('El argumento proporcionado no es válido.',
+        return CustomError(
+            'Información no válida. Por favor, verifica los datos.',
+            code: e.code);
+      case 'verification-failed':
+        return CustomError(
+            'Error en la verificación. Por favor, intenta nuevamente.',
+            code: e.code);
+      case 'no-auth':
+        return CustomError('No hay una sesión activa.', code: e.code);
+      case 'requires-2fa':
+        return CustomError('Se requiere verificación de dos factores.',
             code: e.code);
       default:
-        return CustomError('Error de Firestore: ${e.message}', code: e.code);
+        return CustomError(
+            'Ha ocurrido un error. Por favor, intenta nuevamente.',
+            code: e.code);
     }
   }
 
   static CustomError handlePlatformException(PlatformException e) {
-    return CustomError('Error del sistema: ${e.message}',
+    return CustomError('Error del sistema. Por favor, intenta nuevamente.',
         code: e.code ?? "platform-error");
   }
 
   static CustomError handleGenericException(dynamic e) {
-    return CustomError('Error desconocido: ${e.toString()}', code: "unknown");
+    return CustomError(
+        'Ha ocurrido un error inesperado. Por favor, intenta nuevamente.',
+        code: "unknown");
   }
 }

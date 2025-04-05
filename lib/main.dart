@@ -15,6 +15,8 @@ void main() async {
   );
   await Environment.initEnvironment();
   await initializeDateFormatting('es', null);
+
+  
   runApp(const ProviderScope(child: MainApp()));
 }
 

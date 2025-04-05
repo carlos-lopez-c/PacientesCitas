@@ -52,7 +52,7 @@ class CustomTextFormField extends StatelessWidget {
             ),
           ),
         Container(
-          height: 48, // Altura fija para todos los campos
+          height: 52,
           decoration: BoxDecoration(
             color: colors.surface,
             borderRadius: BorderRadius.circular(12),
@@ -70,11 +70,13 @@ class CustomTextFormField extends StatelessWidget {
             obscureText: obscureText,
             keyboardType: keyboardType,
             maxLength: maxLength,
+            textAlignVertical: TextAlignVertical.center,
             style: TextStyle(
               fontSize: 14,
               color: colors.onSurface,
             ),
             decoration: InputDecoration(
+              isDense: true,
               prefixIcon: prefixIcon != null
                   ? IconTheme(
                       data: IconThemeData(
@@ -91,7 +93,7 @@ class CustomTextFormField extends StatelessWidget {
               ),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
-                vertical: 12,
+                vertical: 14,
               ),
               hintText: hint,
               hintStyle: TextStyle(
@@ -100,6 +102,7 @@ class CustomTextFormField extends StatelessWidget {
               ),
               border: InputBorder.none,
               suffixIcon: suffixIcon,
+              counterText: "",
             ),
           ),
         ),

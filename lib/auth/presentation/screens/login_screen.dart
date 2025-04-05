@@ -12,20 +12,6 @@ class LoginScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
 
-    // Verificar si el usuario está autenticado
-    if (authState.authStatus == AuthStatus.authenticated &&
-        authState.user != null) {
-      // Redirigir al home si ya está autenticado
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.go('/home');
-      });
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
     // Escuchar cambios en el estado de autenticación
     ref.listen<AuthState>(authProvider, (previous, next) {
       if (next.errorMessage.isNotEmpty) {
@@ -168,8 +154,11 @@ class LoginScreen extends ConsumerWidget {
                                     ),
                                   ),
                                   TextButton(
-                                    onPressed: () =>
-                                        context.push('/forgot-password'),
+                                    onPressed: () {
+                                      // Usamos pushNamed en lugar de push para asegurarnos
+                                      // de que la ruta se maneje correctamente por el router
+                                      context.push('/forgot-password');
+                                    },
                                     style: TextButton.styleFrom(
                                       foregroundColor: colors.primary,
                                     ),

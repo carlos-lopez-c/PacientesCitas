@@ -1,11 +1,13 @@
 import 'dart:math';
 
+import 'package:flutter/material.dart';
 import 'package:formz/formz.dart';
 import 'package:fundacion_paciente_app/auth/domain/entities/user_register.dart';
 import 'package:fundacion_paciente_app/auth/presentation/providers/auth_provider.dart';
 import 'package:fundacion_paciente_app/shared/infrastructure/errors/custom_error.dart';
 import 'package:fundacion_paciente_app/shared/infrastructure/inputs/inputs.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class FormularioState {
   final Email email_user;
@@ -437,24 +439,25 @@ class FormularioNotifier extends StateNotifier<FormularioState> {
         ),
       );
 
-      await registerUserCallback(userRegister);
+      final success = await registerUserCallback(userRegister);
 
-      state = state.copyWith(
-        successMessage: '✅ Usuario registrado con éxito',
-        isPosting: false,
-        errorMessage: '',
-      );
-    } on CustomError catch (e) {
-      state = state.copyWith(
-        errorMessage: '❗ ${e.message}', // 🔥 Se almacena el error en el estado
-        isPosting: false,
-      );
+      if (success) {
+        state = state.copyWith(
+          isPosting: false,
+          errorMessage: '',
+        );
+      } else {
+        state = state.copyWith(
+          errorMessage: '❗ Error al registrar usuario',
+          successMessage: '',
+        );
+      }
     } catch (e) {
-      print(e);
       state = state.copyWith(
-        errorMessage: '❗ Error desconocido al registrar usuario',
-        isPosting: false,
+        errorMessage: '❗ Error al registrar usuario',
       );
+    } finally {
+      state = state.copyWith(isPosting: false);
     }
   }
 
@@ -683,12 +686,21 @@ class FormularioNotifier extends StateNotifier<FormularioState> {
 final registerFormProvider =
     StateNotifierProvider.autoDispose<FormularioNotifier, FormularioState>(
         (ref) {
-  final register = ref.watch(authProvider.notifier).registerUser;
-  final formularioNotifier = FormularioNotifier(registerUserCallback: register);
+  // Usar read en lugar de watch para evitar recreaciones innecesarias
+  final registerCallback = ref.read(authProvider.notifier).registerUser;
+  final formularioNotifier =
+      FormularioNotifier(registerUserCallback: registerCallback);
 
-  // Escuchar cambios en el estado de autenticación
+  // Modificar el listener para que solo se active cuando sea necesario
   ref.listen<AuthState>(authProvider, (previous, next) {
-    if (next.authStatus == AuthStatus.notAuthenticated) {
+    // Ignorar completamente cualquier cambio durante el registro
+    if (next.isRegisterLoading || previous?.isRegisterLoading == true) return;
+
+    // Solo resetear si estamos en notAuthenticated y no hay operación pendiente
+    if (next.authStatus == AuthStatus.notAuthenticated &&
+        !next.isRegisterLoading &&
+        previous?.isRegisterLoading == false &&
+        formularioNotifier.state.successMessage.isEmpty) {
       formularioNotifier.resetState();
     }
   });

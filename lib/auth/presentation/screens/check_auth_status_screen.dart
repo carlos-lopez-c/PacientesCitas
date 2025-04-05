@@ -64,6 +64,12 @@ class _CheckAuthStatusScreenState extends ConsumerState<CheckAuthStatusScreen>
 
     // Escuchar cambios en el estado de autenticación
     ref.listen<AuthState>(authProvider, (previous, next) {
+      // Ignorar completamente cualquier cambio durante el registro
+      if (next.isRegisterLoading || previous?.isRegisterLoading == true) {
+        return;
+      }
+
+      // Solo redirigir si no estamos en proceso de registro
       if (next.authStatus != AuthStatus.checking) {
         if (next.authStatus == AuthStatus.authenticated) {
           context.go('/home');
@@ -153,7 +159,6 @@ class _CheckAuthStatusScreenState extends ConsumerState<CheckAuthStatusScreen>
                       color: colors.primary.withOpacity(0.3),
                       width: 3,
                     ),
-                    borderRadius: BorderRadius.circular(25),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(3),

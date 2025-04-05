@@ -5,11 +5,18 @@ import 'package:fundacion_paciente_app/auth/presentation/providers/register_form
 import 'package:fundacion_paciente_app/shared/presentation/widgets/custom_text_form_fiield.dart';
 import 'package:fundacion_paciente_app/shared/presentation/widgets/custom_filled_button.dart';
 
-class RegisterFormPart1 extends ConsumerWidget {
+class RegisterFormPart1 extends ConsumerStatefulWidget {
   const RegisterFormPart1({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RegisterFormPart1> createState() => _RegisterFormPart1State();
+}
+
+class _RegisterFormPart1State extends ConsumerState<RegisterFormPart1> {
+  bool _showPassword = false;
+
+  @override
+  Widget build(BuildContext context) {
     final registerForm = ref.watch(registerFormProvider);
     final pageState = ref.watch(pageControllerProvider);
     final currentPage = pageState.currentPage;
@@ -45,8 +52,19 @@ class RegisterFormPart1 extends ConsumerWidget {
           errorMessage: registerForm.isFormPostedStep1
               ? registerForm.password_user.errorMessage
               : null,
-          obscureText: true,
+          obscureText: !_showPassword,
           prefixIcon: Icon(Icons.lock_outline, color: colors.primary),
+          suffixIcon: IconButton(
+            icon: Icon(
+              _showPassword ? Icons.visibility_off : Icons.visibility,
+              color: colors.primary,
+            ),
+            onPressed: () {
+              setState(() {
+                _showPassword = !_showPassword;
+              });
+            },
+          ),
           label: 'Contraseña',
           hint: '••••••••',
           onChanged:

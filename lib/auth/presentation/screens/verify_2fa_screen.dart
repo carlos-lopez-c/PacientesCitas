@@ -17,7 +17,6 @@ class _Verify2FAScreenState extends ConsumerState<Verify2FAScreen>
     with SingleTickerProviderStateMixin {
   final formKey = GlobalKey<FormState>();
   final codeController = TextEditingController();
-  bool isLoading = false;
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
 
@@ -64,6 +63,10 @@ class _Verify2FAScreenState extends ConsumerState<Verify2FAScreen>
             duration: const Duration(seconds: 2),
           ),
         );
+      }
+
+      if (next.authStatus == AuthStatus.authenticated) {
+        context.go('/home');
       }
     });
 
@@ -190,35 +193,27 @@ class _Verify2FAScreenState extends ConsumerState<Verify2FAScreen>
                               const SizedBox(height: 20),
                               CustomFilledButton(
                                 text: 'VERIFICAR',
-                                onPressed: isLoading
+                                onPressed: authState.isLoading
                                     ? null
                                     : () async {
                                         if (formKey.currentState!.validate()) {
-                                          setState(() => isLoading = true);
-                                          try {
-                                            await ref
-                                                .read(authProvider.notifier)
-                                                .verifyPhoneCode(
-                                                    codeController.text);
-                                            if (mounted) {
-                                              context.go('/home');
-                                            }
-                                          } finally {
-                                            if (mounted) {
-                                              setState(() => isLoading = false);
-                                            }
-                                          }
+                                          await ref
+                                              .read(authProvider.notifier)
+                                              .verifyPhoneCode(
+                                                  codeController.text);
                                         }
                                       },
-                                isLoading: isLoading,
+                                isLoading: authState.isLoading,
                               ),
                               const SizedBox(height: 20),
                               TextButton.icon(
-                                onPressed: () {
-                                  ref
-                                      .read(authProvider.notifier)
-                                      .resendPhoneCode();
-                                },
+                                onPressed: authState.isLoading
+                                    ? null
+                                    : () {
+                                        ref
+                                            .read(authProvider.notifier)
+                                            .resendPhoneCode();
+                                      },
                                 icon:
                                     Icon(Icons.refresh, color: colors.primary),
                                 label: Text(
