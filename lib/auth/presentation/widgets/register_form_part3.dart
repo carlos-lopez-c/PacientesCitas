@@ -39,6 +39,11 @@ class _RegisterFormPart3State extends ConsumerState<RegisterFormPart3> {
           setState(() {
             _isRegistering = false;
           });
+
+          // Redirigir al login después de mostrar el mensaje de éxito
+          Future.microtask(() {
+            Navigator.pushReplacementNamed(context, '/login');
+          });
         }
       }
     });
@@ -47,6 +52,11 @@ class _RegisterFormPart3State extends ConsumerState<RegisterFormPart3> {
     final authState = ref.watch(authProvider);
     final colors = Theme.of(context).colorScheme;
     final scrollController = ScrollController();
+
+    final healthInsuranceOptions = [
+      {'name': 'ISSFA', 'value': 'ISSFA'},
+      {'name': 'Ninguno', 'value': 'NINGUNO'},
+    ];
 
     return SingleChildScrollView(
       controller: scrollController,
@@ -65,29 +75,71 @@ class _RegisterFormPart3State extends ConsumerState<RegisterFormPart3> {
           ),
           const SizedBox(height: 20),
 
-          // Seguro Social
-          CustomDropdownFormField(
-            value: registerForm.health_insurance_patient.value.isNotEmpty
-                ? registerForm.health_insurance_patient.value
-                : null,
-            errorMessage: registerForm.isFormPostedStep3
-                ? registerForm.health_insurance_patient.errorMessage
-                : null,
-            prefixIcon:
-                Icon(Icons.health_and_safety_outlined, color: colors.primary),
-            label: 'Seguro Social',
-            onChanged: (value) {
-              if (value != null) {
-                ref
-                    .read(registerFormProvider.notifier)
-                    .onHealthInsurancePatientChanged(value);
-              }
-            },
-            hint: 'Seleccione el seguro social',
-            items: const [
-              DropdownMenuItem(value: 'ISSFA', child: Text('ISSFA')),
-              DropdownMenuItem(value: 'NINGUNO', child: Text('Ninguno')),
-            ],
+          // Seguro Social con Radio Buttons
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: registerForm.isFormPostedStep3 &&
+                        registerForm.health_insurance_patient.error != null
+                    ? Colors.red
+                    : Colors.grey.shade400,
+                width: 1,
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.health_and_safety_outlined,
+                        color: colors.primary, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Seguro Social',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ...healthInsuranceOptions.map((option) => RadioListTile<String>(
+                      title: Text(option['name']!),
+                      value: option['value']!,
+                      groupValue:
+                          registerForm.health_insurance_patient.value.isNotEmpty
+                              ? registerForm.health_insurance_patient.value
+                              : null,
+                      onChanged: (value) {
+                        if (value != null) {
+                          ref
+                              .read(registerFormProvider.notifier)
+                              .onHealthInsurancePatientChanged(value);
+                        }
+                      },
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      visualDensity: VisualDensity.compact,
+                    )),
+                if (registerForm.isFormPostedStep3 &&
+                    registerForm.health_insurance_patient.error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      registerForm.health_insurance_patient.errorMessage ??
+                          'Campo requerido',
+                      style: TextStyle(
+                        color: Colors.red.shade600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
           if (registerForm.health_insurance_patient.value == 'ISSFA')
             Container(
@@ -216,7 +268,7 @@ class _RegisterFormPart3State extends ConsumerState<RegisterFormPart3> {
               ),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
                   child: CustomFilledButton(
                     text: _isRegistering ? 'Registrando...' : 'Registrar',
                     onPressed: (registerForm.isPosting || authState.isLoading)

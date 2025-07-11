@@ -129,8 +129,6 @@ class AppointmentDetailDialog extends StatelessWidget {
                 [
                   _buildDetailRow(
                       context, Icons.person, 'Paciente:', appointment.patient),
-                  _buildDetailRow(context, Icons.email_outlined, 'Correo:',
-                      appointment.emailPatient),
                   _buildDetailRow(context, Icons.medical_services, 'Doctor:',
                       appointment.doctor),
                 ],

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:fundacion_paciente_app/auth/presentation/providers/auth_provider.dart';
 import 'package:fundacion_paciente_app/auth/presentation/widgets/register_controller.dart';
 import 'package:fundacion_paciente_app/shared/presentation/widgets/header.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fundacion_paciente_app/auth/presentation/providers/register_form_provider.dart';
 import 'package:fundacion_paciente_app/auth/presentation/providers/page_register.dart';
+import 'package:go_router/go_router.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   static const name = 'register-screen';
@@ -28,7 +29,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final colors = Theme.of(context).colorScheme;
     final size = MediaQuery.of(context).size;
 
+    ref.listen<AuthState>(authProvider, (previous, next) {
+      if (next.successMessage.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.successMessage),
+            backgroundColor: Colors.green.shade300,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        Future.delayed(const Duration(seconds: 2), () {
+          ref.read(authProvider.notifier).clearSuccessMessage();
+          context.go('/login');
+        });
+      }
+    });
+
     return Scaffold(
+      appBar: AppBar(),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -60,7 +82,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       );
                     },
                     child: const Header(
-                      heightScale: 0.8,
+                      heightScale: 0.7,
                       imagePath: 'assets/images/logo.png',
                       title: 'Fundación de niños especiales',
                       subtitle: '"SAN MIGUEL" FUNESAMI',

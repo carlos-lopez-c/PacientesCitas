@@ -12,57 +12,40 @@ import 'package:fundacion_paciente_app/home/presentation/screens/registerappoint
 import 'package:go_router/go_router.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
-
+  final goRouterNotifier = ref.watch(goRouterNotifierProvider);
   // Crear el router con una key global para realizar redirecciones de forma segura
   final router = GoRouter(
-    initialLocation: '/',
-    refreshListenable: GoRouterRefreshStream(ref.watch(authProvider.notifier)),
+    initialLocation: '/splash',
+    refreshListenable: goRouterNotifier,
     redirect: (context, state) {
-      final isGoingToLogin = state.matchedLocation == '/login';
-      final isGoingToRegister = state.matchedLocation == '/register';
-      final isGoingToVerify2FA = state.matchedLocation == '/verify-2fa';
-      final isGoingToSplash = state.matchedLocation == '/splash';
-      final isGoingToHome = state.matchedLocation == '/home';
-      final isGoingToRoot = state.matchedLocation == '/';
-      final isGoingToForgotPassword =
-          state.matchedLocation == '/forgot-password';
-
-      // IMPORTANTE: Si estamos en la pantalla de registro o en proceso de registro, no redirigir
-      if (isGoingToRegister || authState.isRegisterLoading) return null;
-
-      // IMPORTANTE: Solo redirigir a checking si no estamos en proceso de registro
-      if (authState.authStatus == AuthStatus.checking &&
-          !authState.isRegisterLoading) {
-        if (isGoingToSplash) return null;
-        return '/splash';
-      }
-
-      // Si no está autenticado
-      if (authState.authStatus == AuthStatus.notAuthenticated) {
-        // Permitir las rutas de autenticación y recuperación de contraseña
-        if (isGoingToLogin || isGoingToSplash || isGoingToForgotPassword)
+      final isGoingTo = state.uri.path;
+      final authStatus = goRouterNotifier.authStatus;
+      if (authStatus == AuthStatus.requires2FA) {
+        if (isGoingTo == '/verify-2fa') {
           return null;
-        return '/login';
-      }
-
-      // Si requiere 2FA
-      if (authState.authStatus == AuthStatus.requires2FA) {
-        if (isGoingToVerify2FA) return null;
+        }
         return '/verify-2fa';
       }
 
-      // Si está autenticado
-      if (authState.authStatus == AuthStatus.authenticated) {
-        // No permitir volver a las pantallas de autenticación
-        if (isGoingToLogin ||
-            isGoingToVerify2FA ||
-            isGoingToSplash ||
-            isGoingToRoot ||
-            isGoingToForgotPassword) {
-          return '/home';
+      if (authStatus == AuthStatus.notAuthenticated) {
+        if (isGoingTo == '/login' ||
+            isGoingTo == '/forgot-password' ||
+            isGoingTo == '/register' ||
+            isGoingTo == '/verify-2fa') {
+          return null;
         }
-        return null;
+        print('Redirecting to /login');
+        return '/login';
+      }
+
+      if (authStatus == AuthStatus.authenticated) {
+        if (isGoingTo == '/login' ||
+            isGoingTo == '/splash' ||
+            isGoingTo == '/forgot-password' ||
+            isGoingTo == '/register' ||
+            isGoingTo == '/verify-2fa') {
+          return '/';
+        }
       }
 
       return null;

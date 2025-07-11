@@ -3,7 +3,6 @@ import 'package:fundacion_paciente_app/auth/domain/entities/user_entities.dart';
 import 'package:fundacion_paciente_app/auth/domain/entities/user_register.dart';
 import 'package:fundacion_paciente_app/auth/domain/repositories/auth_repository.dart';
 import 'package:fundacion_paciente_app/auth/infrastructure/repositories/auth_repository_impl.dart';
-import 'package:fundacion_paciente_app/config/routes/app_routes.dart';
 import 'package:fundacion_paciente_app/shared/infrastructure/services/key_value_storage_service.dart';
 import 'package:fundacion_paciente_app/shared/infrastructure/services/key_value_storage_service_impl.dart';
 import 'package:fundacion_paciente_app/shared/infrastructure/errors/custom_error.dart';
@@ -26,12 +25,14 @@ class AuthState {
   final String errorMessage;
   final String? verificationId;
   final String? phoneNumber;
+  final String successMessage;
   final bool isLoading;
   final bool isRegisterLoading;
 
   AuthState({
     this.authStatus = AuthStatus.checking,
     this.user,
+    this.successMessage = '',
     this.errorMessage = '',
     this.verificationId,
     this.phoneNumber,
@@ -44,6 +45,7 @@ class AuthState {
     User? user,
     String? errorMessage,
     String? verificationId,
+    String? successMessage,
     String? phoneNumber,
     bool? isLoading,
     bool? isRegisterLoading,
@@ -51,6 +53,7 @@ class AuthState {
       AuthState(
         authStatus: authStatus ?? this.authStatus,
         user: user ?? this.user,
+        successMessage: successMessage ?? this.successMessage,
         errorMessage: errorMessage ?? this.errorMessage,
         verificationId: verificationId ?? this.verificationId,
         phoneNumber: phoneNumber ?? this.phoneNumber,
@@ -202,7 +205,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(
         isRegisterLoading: true,
         errorMessage: '',
-        authStatus: state.authStatus,
       );
 
       await authRepository.register(register);
@@ -210,7 +212,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(
         isRegisterLoading: false,
         errorMessage: '',
-        authStatus: AuthStatus.notAuthenticated,
+        successMessage: 'Registro exitoso. Por favor, inicie sesión.',
       );
 
       return true;
@@ -222,6 +224,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       return false;
     }
+  }
+
+  void clearSuccessMessage() {
+    state = state.copyWith(successMessage: '');
   }
 
   void checkAuthStatus() async {

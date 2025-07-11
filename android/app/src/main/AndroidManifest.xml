@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="FUNESAMI-CITAS PACIENTES"
+        android:label="FUNESAMI"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

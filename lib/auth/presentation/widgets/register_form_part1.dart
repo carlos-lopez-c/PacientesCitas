@@ -18,8 +18,6 @@ class _RegisterFormPart1State extends ConsumerState<RegisterFormPart1> {
   @override
   Widget build(BuildContext context) {
     final registerForm = ref.watch(registerFormProvider);
-    final pageState = ref.watch(pageControllerProvider);
-    final currentPage = pageState.currentPage;
     final colors = Theme.of(context).colorScheme;
 
     return Column(
@@ -27,7 +25,7 @@ class _RegisterFormPart1State extends ConsumerState<RegisterFormPart1> {
         const SizedBox(height: 10),
         const Center(
           child: Text(
-            'Información del Usuario',
+            'Información del Representante',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,
@@ -66,7 +64,7 @@ class _RegisterFormPart1State extends ConsumerState<RegisterFormPart1> {
             },
           ),
           label: 'Contraseña',
-          hint: '••••••••',
+          hint: '',
           onChanged:
               ref.read(registerFormProvider.notifier).onPasswordUserChanged,
         ),

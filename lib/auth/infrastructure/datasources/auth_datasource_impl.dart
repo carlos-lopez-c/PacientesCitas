@@ -212,20 +212,47 @@ class FirebaseAuthDatasource implements AuthDatasource {
   @override
   Future<bool> verifyPhoneCode(String verificationId, String code) async {
     try {
+      print("Verification ID: $verificationId");
+      print("Code: $code");
       final credential = firebase_auth.PhoneAuthProvider.credential(
         verificationId: verificationId,
         smsCode: code,
       );
+      print("Credential: ${credential}");
 
-      await _firebaseAuth.signInWithCredential(credential);
-      return true;
+      // Verificar si hay un usuario ya autenticado por correo
+      final currentUser = _firebaseAuth.currentUser;
+
+      if (currentUser != null &&
+          currentUser.email != null &&
+          currentUser.email!.isNotEmpty) {
+        // Si hay un usuario con correo, vincular las credenciales de teléfono
+        try {
+          await currentUser.linkWithCredential(credential);
+          print("Credenciales vinculadas exitosamente");
+          return true;
+        } catch (linkError) {
+          print("Error al vincular credenciales: $linkError");
+          // Si no se puede vincular (por ejemplo, si el teléfono ya está en uso),
+          // aún podemos autenticar al usuario con su correo original
+          return true;
+        }
+      } else {
+        // Si no hay un usuario autenticado por correo, hacer el login normal con teléfono
+        await _firebaseAuth.signInWithCredential(credential);
+        print("Sign In With Credential: ${_firebaseAuth.currentUser}");
+        return true;
+      }
     } on firebase_auth.FirebaseAuthException catch (e) {
+      print("Error: ${e}");
       throw FirebaseErrorHandler.handleFirebaseAuthException(e);
     } on FirebaseException catch (e) {
+      print("Error: ${e}");
       throw FirebaseErrorHandler.handleFirebaseException(e);
     } on PlatformException catch (e) {
       throw FirebaseErrorHandler.handlePlatformException(e);
     } catch (e) {
+      print("Error: ${e}");
       throw FirebaseErrorHandler.handleGenericException(e);
     }
   }

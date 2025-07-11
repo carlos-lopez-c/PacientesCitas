@@ -32,8 +32,6 @@ class _RegisterFormPart2State extends ConsumerState<RegisterFormPart2> {
   @override
   Widget build(BuildContext context) {
     final registerForm = ref.watch(registerFormProvider);
-    final pageState = ref.watch(pageControllerProvider);
-    final currentPage = pageState.currentPage;
     final colors = Theme.of(context).colorScheme;
 
     // Actualizar el valor del guardián legal y notificar al provider
@@ -52,7 +50,6 @@ class _RegisterFormPart2State extends ConsumerState<RegisterFormPart2> {
     final genders = [
       {'name': 'Masculino', 'value': 'HOMBRE'},
       {'name': 'Femenino', 'value': 'MUJER'},
-      {'name': 'Otro', 'value': 'OTRO'},
     ];
 
     final relations = [
@@ -132,28 +129,69 @@ class _RegisterFormPart2State extends ConsumerState<RegisterFormPart2> {
           initialValue: registerForm.date_patient.value,
         ),
         const SizedBox(height: 15),
-        CustomDropdownFormField(
-          value: registerForm.gender_patient.value.isNotEmpty
-              ? registerForm.gender_patient.value
-              : null,
-          errorMessage: registerForm.isFormPostedStep2
-              ? registerForm.gender_patient.errorMessage
-              : null,
-          prefixIcon: Icon(Icons.person_outline, color: colors.primary),
-          label: 'Género',
-          onChanged: (value) {
-            final valueD = value ?? '';
-            ref
-                .read(registerFormProvider.notifier)
-                .onGenderPatientChanged(valueD);
-          },
-          hint: 'Seleccione el género',
-          items: genders.map((gender) {
-            return DropdownMenuItem(
-              value: gender['value'],
-              child: Text(gender['name']!),
-            );
-          }).toList(),
+        // Radio buttons para género
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: registerForm.isFormPostedStep2 &&
+                      registerForm.gender_patient.error != null
+                  ? Colors.red
+                  : Colors.grey.shade400,
+              width: 1,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.person_outline, color: colors.primary, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Género',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ...genders.map((gender) => RadioListTile<String>(
+                    title: Text(gender['name']!),
+                    value: gender['value']!,
+                    groupValue: registerForm.gender_patient.value.isNotEmpty
+                        ? registerForm.gender_patient.value
+                        : null,
+                    onChanged: (value) {
+                      if (value != null) {
+                        ref
+                            .read(registerFormProvider.notifier)
+                            .onGenderPatientChanged(value);
+                      }
+                    },
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    visualDensity: VisualDensity.compact,
+                  )),
+              if (registerForm.isFormPostedStep2 &&
+                  registerForm.gender_patient.error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    registerForm.gender_patient.errorMessage ??
+                        'Campo requerido',
+                    style: TextStyle(
+                      color: Colors.red.shade600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
         const SizedBox(height: 15),
         CustomDropdownFormField(
@@ -211,7 +249,7 @@ class _RegisterFormPart2State extends ConsumerState<RegisterFormPart2> {
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: CustomFilledButton(
                   text: 'Siguiente',
                   onPressed: () {
@@ -237,7 +275,7 @@ class _RegisterFormPart2State extends ConsumerState<RegisterFormPart2> {
                     }
 
                     // Verificamos el resto de campos
-                    if (!registerForm.isValid) {
+                    if (!ref.read(registerFormProvider).isValid) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: const Text(

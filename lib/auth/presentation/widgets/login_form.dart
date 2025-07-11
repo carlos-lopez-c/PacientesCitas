@@ -54,7 +54,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                 loginForm.isFormPosted ? loginForm.password.errorMessage : null,
             obscureText: !_showPassword,
             label: 'Contraseña',
-            hint: '••••••••',
+            hint: '',
             onChanged: ref.read(formularioProvider.notifier).onPasswordChanged,
           ),
           const SizedBox(height: 30),

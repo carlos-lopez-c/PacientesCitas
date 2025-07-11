@@ -75,7 +75,6 @@ class PasswordResetNotifier extends StateNotifier<PasswordResetState> {
         errorMessage: '',
         isFormPosted: false,
         // Reiniciamos el email para permitir enviar de nuevo si es necesario
-        email: const Email.pure(),
       );
 
       // Aquí no redirigimos, simplemente mostramos un mensaje de éxito
@@ -104,6 +103,7 @@ class PasswordResetNotifier extends StateNotifier<PasswordResetState> {
 
   // Nuevo método para mostrar mensaje de éxito
   void showSuccessMessage() {
+    print('Email enviado a ${state.email.value}');
     state = state.copyWith(
       errorMessage: '',
       successMessage:

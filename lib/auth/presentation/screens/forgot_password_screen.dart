@@ -48,7 +48,7 @@ class ForgotPasswordScreen extends ConsumerWidget {
                       );
                     },
                     child: const Header(
-                      heightScale: 0.8,
+                      heightScale: 0.75,
                       imagePath: 'assets/images/logo.png',
                       title: 'Fundación de niños especiales',
                       subtitle: '"SAN MIGUEL" FUNESAMI',
