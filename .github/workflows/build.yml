@@ -1,9 +1,9 @@
 name: DevSecOps Simple para Flutter
 on: 
   push: 
-    branches: [main]
+    branches: main
   pull_request: 
-    branches: [main]
+    branches: main
 
 jobs:
   # 1. Análisis de secretos
