@@ -9,7 +9,7 @@ on:
 
 jobs:
   # 1. Escaneo de Secretos
-  seguridad_gitleaks: 
+  secret_scan:: 
     name: Seguridad con Gitleaks
     runs-on: ubuntu-latest
     steps: 
