@@ -181,9 +181,9 @@ class HomeView extends ConsumerWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
+                                const Text(
                                   '¡Bienvenido!',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
@@ -204,9 +204,9 @@ class HomeView extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      Text(
+                      const Text(
                         'Fundación de niños especiales "SAN MIGUEL" FUNESAMI',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
@@ -427,38 +427,6 @@ class HomeView extends ConsumerWidget {
                               ),
                             ),
                             const SizedBox(height: 12),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                OutlinedButton.icon(
-                                  onPressed: () {
-                                    // Aquí se podría implementar la funcionalidad para llamar o enviar un mensaje
-                                    // Por ahora solo mostramos un mensaje
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: const Text(
-                                            'Contactando a la fundación...'),
-                                        backgroundColor: colors.primary,
-                                        behavior: SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  icon: const Icon(Icons.phone),
-                                  label: const Text('Contactar'),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: colors.primary,
-                                    side: BorderSide(color: colors.primary),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(30),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
                           ],
                         ),
                       ),

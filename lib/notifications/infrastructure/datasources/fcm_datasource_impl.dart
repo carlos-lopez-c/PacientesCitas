@@ -14,33 +14,37 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 class FcmDatasourceImpl implements NotificationDatasource {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  
-  final StreamController<NotificationEntity> _messageController = StreamController<NotificationEntity>.broadcast();
-  final StreamController<NotificationEntity> _messageOpenedController = StreamController<NotificationEntity>.broadcast();
+
+  final StreamController<NotificationEntity> _messageController =
+      StreamController<NotificationEntity>.broadcast();
+  final StreamController<NotificationEntity> _messageOpenedController =
+      StreamController<NotificationEntity>.broadcast();
 
   @override
   Future<void> initializeNotifications() async {
     print('🔧 Initializing FCM and local notifications...');
-    
+
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-    
-    const AndroidInitializationSettings initializationSettingsAndroid = 
+
+    const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
-    
-    const DarwinInitializationSettings initializationSettingsIOS = 
+
+    const DarwinInitializationSettings initializationSettingsIOS =
         DarwinInitializationSettings(
-          requestAlertPermission: true,
-          requestBadgePermission: true,
-          requestSoundPermission: true,
-        );
-    
-    const InitializationSettings initializationSettings = InitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
       android: initializationSettingsAndroid,
       iOS: initializationSettingsIOS,
     );
-    
+
     final initialized = await _localNotifications.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
@@ -59,7 +63,7 @@ class FcmDatasourceImpl implements NotificationDatasource {
         }
       },
     );
-    
+
     print('📱 Local notifications initialized: $initialized');
 
     // Crear canal de notificaciones para Android
@@ -77,7 +81,7 @@ class FcmDatasourceImpl implements NotificationDatasource {
       final notification = _mapRemoteMessageToEntity(message);
       _messageOpenedController.add(notification);
     });
-    
+
     print('✅ FCM initialization completed');
   }
 
@@ -92,9 +96,10 @@ class FcmDatasourceImpl implements NotificationDatasource {
     );
 
     await _localNotifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
-    
+
     print('📱 Notification channel created: ${channel.id}');
   }
 
@@ -111,24 +116,25 @@ class FcmDatasourceImpl implements NotificationDatasource {
   @override
   Future<void> requestPermissions() async {
     print('🔐 Requesting notification permissions...');
-    
+
     try {
       // Solicitar permisos usando permission_handler para Android 13+
       final PermissionStatus status = await Permission.notification.request();
       print('📱 Permission status: $status');
-      
+
       if (status == PermissionStatus.denied) {
         print('⚠️ Notification permission denied');
         return;
       }
-      
+
       if (status == PermissionStatus.permanentlyDenied) {
         print('❌ Notification permission permanently denied');
         return;
       }
-      
+
       // Solicitar permisos FCM (especialmente para iOS)
-      final NotificationSettings settings = await _firebaseMessaging.requestPermission(
+      final NotificationSettings settings =
+          await _firebaseMessaging.requestPermission(
         alert: true,
         announcement: false,
         badge: true,
@@ -137,17 +143,17 @@ class FcmDatasourceImpl implements NotificationDatasource {
         provisional: false,
         sound: true,
       );
-      
+
       print('🔐 FCM permission status: ${settings.authorizationStatus}');
-      
+
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
         print('✅ User granted notification permissions');
-      } else if (settings.authorizationStatus == AuthorizationStatus.provisional) {
+      } else if (settings.authorizationStatus ==
+          AuthorizationStatus.provisional) {
         print('🟡 User granted provisional notification permissions');
       } else {
         print('❌ User declined or has not accepted notification permissions');
       }
-      
     } catch (e) {
       print('❌ Error requesting permissions: $e');
     }
@@ -168,7 +174,8 @@ class FcmDatasourceImpl implements NotificationDatasource {
   Stream<NotificationEntity> get onMessage => _messageController.stream;
 
   @override
-  Stream<NotificationEntity> get onMessageOpenedApp => _messageOpenedController.stream;
+  Stream<NotificationEntity> get onMessageOpenedApp =>
+      _messageOpenedController.stream;
 
   @override
   Future<NotificationEntity?> getInitialMessage() async {
@@ -196,7 +203,7 @@ class FcmDatasourceImpl implements NotificationDatasource {
       print('❌ No notification permission, cannot show notification');
       print('💡 Requesting permission...');
       await requestPermissions();
-      
+
       // Verificar nuevamente después de solicitar
       final hasPermissionAfterRequest = await checkNotificationPermission();
       if (!hasPermissionAfterRequest) {
@@ -231,7 +238,8 @@ class FcmDatasourceImpl implements NotificationDatasource {
         iOS: iOSPlatformChannelSpecifics,
       );
 
-      final notificationId = DateTime.now().millisecondsSinceEpoch.remainder(100000);
+      final notificationId =
+          DateTime.now().millisecondsSinceEpoch.remainder(100000);
       print('📱 Showing notification with ID: $notificationId');
 
       await _localNotifications.show(
@@ -241,7 +249,7 @@ class FcmDatasourceImpl implements NotificationDatasource {
         platformChannelSpecifics,
         payload: data != null ? json.encode(data) : null,
       );
-      
+
       print('✅ Local notification displayed successfully');
     } catch (e) {
       print('❌ Error showing local notification: $e');
