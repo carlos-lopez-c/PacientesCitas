@@ -205,24 +205,24 @@ jobs:
   # 4. Publicar APK (solo si pasan todos los tests)
   publish:
     name: 🚀 Publicar APK
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [secret_scan, code_analysis, build_and_scan]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.27.3'
-      - run: |
-          flutter pub get
-          flutter build apk --release
-          
-      - name: Commit APK
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          cp build/app/outputs/flutter-apk/app-release.apk .
-          git add app-release.apk
-          git commit -m "✅ APK verificado y seguro [skip ci]"
-          git push
+  if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  needs: [secret_scan, code_analysis, build_and_scan]
+  runs-on: ubuntu-latest
+
+  steps:
+    - uses: actions/checkout@v4
+
+    - uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.27.3'
+
+    - name: 📦 Instalar dependencias y construir APK
+      run: |
+        flutter pub get
+        flutter build apk --release
+
+    - name: 🗂️ Guardar APK como artefacto
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release
+        path: build/app/outputs/flutter-apk/app-release.apk
