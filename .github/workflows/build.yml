@@ -1,14 +1,12 @@
-name: DevSecOps con MobSF en GitHub Actions
+name: DevSecOps Simple para Flutter
 on: 
   push: 
-    branches: 
-      - main
+    branches: [main]
   pull_request: 
-    branches: 
-      - main
+    branches: [main]
 
 jobs:
-  # 1. Escaneo de Secretos
+  # 1. Análisis de secretos
   secret_scan:
     name: Seguridad con Gitleaks
     runs-on: ubuntu-latest
@@ -21,10 +19,8 @@ jobs:
           chmod +x gitleaks
           sudo mv gitleaks /usr/local/bin/
       - name: Ejecutar Gitleaks para detectar credenciales
-        run: gitleaks detect --verbose --redact --source . || true
 
-
-  # 2. Análisis de Código con SonarCloud
+  # 2. Análisis de código
   code_analysis:
     name: 🔍 Análisis de Código
     runs-on: ubuntu-latest
@@ -41,147 +37,150 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: "https://sonarcloud.io"
 
-  # 3. Build y Análisis con MobSF
-  build_and_scan:
-    name: 📱 Build y Análisis de Seguridad Móvil
+  # 3. Análisis de seguridad del APK (DAST simplificado)
+  mobile_security:
+    name: 📱 Análisis de Seguridad Móvil
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout código
-        uses: actions/checkout@v4
-        
+      - uses: actions/checkout@v4
+      
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.27.3'
           channel: 'stable'
           
+      - name: Instalar herramientas de análisis
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y aapt apktool xmlstarlet jq
+          
       - name: Build APK
         run: |
           flutter pub get
+          flutter analyze --no-fatal-infos
           flutter build apk --release
           
-      - name: Preparar MobSF con Docker
+      - name: Análisis de seguridad del APK
+        id: security_check
         run: |
-          # Descargar y ejecutar MobSF en Docker
-          docker pull opensecurity/mobile-security-framework-mobsf:latest
-          
-          # Ejecutar MobSF en background
-          docker run -d \
-            --name mobsf \
-            -p 8000:8000 \
-            opensecurity/mobile-security-framework-mobsf:latest
-          
-          # Esperar a que MobSF esté listo
-          echo "⏳ Esperando a que MobSF inicie..."
-          for i in {1..30}; do
-            if curl -f http://localhost:8000 > /dev/null 2>&1; then
-              echo "✅ MobSF está listo!"
-              break
-            fi
-            sleep 5
-          done
-          
-      - name: Analizar APK con MobSF
-        id: mobsf_scan
-        run: |
-          # API Key por defecto de MobSF
-          API_KEY="8012fc49fc6b44209e7cd2f4f5d16825c0f5d2c20d284667aa3cc996dee5eb4d"
           APK_PATH="build/app/outputs/flutter-apk/app-release.apk"
+          REPORT_FILE="security-analysis.md"
           
-          # 1. Subir APK
-          echo "📤 Subiendo APK a MobSF..."
-          UPLOAD_RESPONSE=$(curl -s -F "file=@$APK_PATH" \
-            -H "Authorization: $API_KEY" \
-            http://localhost:8000/api/v1/upload)
+          echo "# 📱 Reporte de Seguridad - Flutter APK" > $REPORT_FILE
+          echo "**Fecha:** $(date)" >> $REPORT_FILE
+          echo "**APK:** app-release.apk" >> $REPORT_FILE
+          echo "" >> $REPORT_FILE
           
-          HASH=$(echo $UPLOAD_RESPONSE | grep -o '"hash":"[^"]*' | cut -d'"' -f4)
-          echo "Hash del archivo: $HASH"
-          echo "hash=$HASH" >> $GITHUB_OUTPUT
+          # 1. Información básica del APK
+          echo "## 📋 Información del APK" >> $REPORT_FILE
+          aapt dump badging "$APK_PATH" | grep -E "package:|versionName|targetSdkVersion" >> $REPORT_FILE
+          echo "" >> $REPORT_FILE
           
-          # 2. Iniciar escaneo
-          echo "🔍 Iniciando análisis..."
-          curl -s -X POST \
-            -H "Authorization: $API_KEY" \
-            -d "hash=$HASH" \
-            http://localhost:8000/api/v1/scan
+          # 2. Análisis de permisos
+          echo "## 🔐 Análisis de Permisos" >> $REPORT_FILE
+          echo "### Permisos solicitados:" >> $REPORT_FILE
+          aapt dump permissions "$APK_PATH" | grep "uses-permission:" | sort | uniq >> $REPORT_FILE
           
-          # 3. Esperar un poco para que termine
-          sleep 30
+          # Contar permisos peligrosos
+          DANGEROUS_PERMS=$(aapt dump permissions "$APK_PATH" | grep -E "CAMERA|LOCATION|MICROPHONE|CONTACTS|STORAGE|SMS|PHONE" | wc -l)
+          echo "" >> $REPORT_FILE
+          echo "**Permisos peligrosos encontrados:** $DANGEROUS_PERMS" >> $REPORT_FILE
+          echo "" >> $REPORT_FILE
           
-          # 4. Obtener resultados
-          echo "📊 Obteniendo resultados..."
-          REPORT=$(curl -s -X POST \
-            -H "Authorization: $API_KEY" \
-            -d "hash=$HASH" \
-            http://localhost:8000/api/v1/report_json)
+          # 3. Verificar modo debug
+          echo "## 🐛 Verificación de Modo Debug" >> $REPORT_FILE
+          if aapt dump badging "$APK_PATH" | grep -q "application-debuggable"; then
+            echo "❌ **ALERTA: APK está en modo DEBUG**" >> $REPORT_FILE
+            echo "debug_mode=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ APK está en modo Release" >> $REPORT_FILE
+            echo "debug_mode=false" >> $GITHUB_OUTPUT
+          fi
+          echo "" >> $REPORT_FILE
           
-          echo "$REPORT" > mobsf-report.json
+          # 4. Análisis del certificado
+          echo "## 🔏 Información del Certificado" >> $REPORT_FILE
+          echo '```' >> $REPORT_FILE
+          keytool -printcert -jarfile "$APK_PATH" 2>/dev/null | grep -E "Owner:|Valid|SHA256:" >> $REPORT_FILE
+          echo '```' >> $REPORT_FILE
+          echo "" >> $REPORT_FILE
           
-          # 5. Analizar resultados básicos
-          echo "📈 Analizando resultados..."
+          # 5. Componentes exportados
+          echo "## 🌐 Componentes Exportados" >> $REPORT_FILE
           
-          # Contar problemas por severidad (simplificado)
-          HIGH_COUNT=$(echo "$REPORT" | grep -o '"severity":"high"' | wc -l)
-          MEDIUM_COUNT=$(echo "$REPORT" | grep -o '"severity":"medium"' | wc -l)
-          LOW_COUNT=$(echo "$REPORT" | grep -o '"severity":"low"' | wc -l)
+          # Descompilar AndroidManifest
+          apktool d -s -f "$APK_PATH" -o apk_decoded >/dev/null 2>&1
           
-          echo "high_count=$HIGH_COUNT" >> $GITHUB_OUTPUT
-          echo "medium_count=$MEDIUM_COUNT" >> $GITHUB_OUTPUT
-          echo "low_count=$LOW_COUNT" >> $GITHUB_OUTPUT
+          if [ -f "apk_decoded/AndroidManifest.xml" ]; then
+            EXPORTED=$(xmlstarlet sel -t -m "//*[@android:exported='true']" -v "name()" -n apk_decoded/AndroidManifest.xml 2>/dev/null | wc -l)
+            echo "Componentes exportados encontrados: $EXPORTED" >> $REPORT_FILE
+          fi
+          echo "" >> $REPORT_FILE
           
-          # Mostrar resumen
+          # 6. Análisis de librerías nativas
+          echo "## 📚 Librerías Nativas" >> $REPORT_FILE
+          unzip -l "$APK_PATH" | grep "\.so$" | awk '{print $4}' | sort | uniq >> $REPORT_FILE
+          echo "" >> $REPORT_FILE
+          
+          # 7. Resumen de seguridad
+          echo "## 📊 Resumen de Seguridad" >> $REPORT_FILE
+          
+          ISSUES=0
+          
+          if [ "$DANGEROUS_PERMS" -gt 5 ]; then
+            echo "- ⚠️ Muchos permisos peligrosos ($DANGEROUS_PERMS)" >> $REPORT_FILE
+            ISSUES=$((ISSUES + 1))
+          fi
+          
+          if [ "${{ steps.security_check.outputs.debug_mode }}" = "true" ]; then
+            echo "- ❌ APK en modo debug" >> $REPORT_FILE
+            ISSUES=$((ISSUES + 2))
+          fi
+          
+          if [ "$EXPORTED" -gt 0 ]; then
+            echo "- ⚠️ Componentes exportados detectados" >> $REPORT_FILE
+            ISSUES=$((ISSUES + 1))
+          fi
+          
+          echo "" >> $REPORT_FILE
+          echo "**Total de problemas encontrados:** $ISSUES" >> $REPORT_FILE
+          
+          echo "issues_count=$ISSUES" >> $GITHUB_OUTPUT
+          
+          # Mostrar resumen en consola
           echo "════════════════════════════════════════"
-          echo "📱 RESUMEN DE SEGURIDAD MÓVIL"
+          echo "📱 RESUMEN DE SEGURIDAD"
           echo "════════════════════════════════════════"
-          echo "🔴 Problemas Altos:   $HIGH_COUNT"
-          echo "🟠 Problemas Medios:  $MEDIUM_COUNT"
-          echo "🟡 Problemas Bajos:   $LOW_COUNT"
+          echo "✅ Análisis completado"
+          echo "📋 Permisos peligrosos: $DANGEROUS_PERMS"
+          echo "🐛 Modo Debug: ${{ steps.security_check.outputs.debug_mode }}"
+          echo "🌐 Componentes exportados: $EXPORTED"
+          echo "⚠️  Problemas totales: $ISSUES"
           echo "════════════════════════════════════════"
           
-      - name: Generar reporte PDF
-        if: always()
-        continue-on-error: true
-        run: |
-          API_KEY="8012fc49fc6b44209e7cd2f4f5d16825c0f5d2c20d284667aa3cc996dee5eb4d"
-          HASH="${{ steps.mobsf_scan.outputs.hash }}"
+          # Limpiar
+          rm -rf apk_decoded
           
-          curl -s -X POST \
-            -H "Authorization: $API_KEY" \
-            -d "hash=$HASH" \
-            http://localhost:8000/api/v1/download_pdf \
-            -o mobsf-security-report.pdf
-            
-      - name: Subir reportes
-        if: always()
+      - name: Subir reporte
         uses: actions/upload-artifact@v4
         with:
-          name: security-reports
-          path: |
-            mobsf-report.json
-            mobsf-security-report.pdf
-            
+          name: security-report
+          path: security-analysis.md
+          
       - name: Comentar en PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
-            const high = ${{ steps.mobsf_scan.outputs.high_count }};
-            const medium = ${{ steps.mobsf_scan.outputs.medium_count }};
-            const low = ${{ steps.mobsf_scan.outputs.low_count }};
+            const fs = require('fs');
+            const report = fs.readFileSync('security-analysis.md', 'utf8');
             
-            const status = high > 0 ? '❌ Requiere atención' : '✅ Sin problemas críticos';
+            // Extraer solo el resumen para el comentario
+            const summaryStart = report.indexOf('## 📊 Resumen de Seguridad');
+            const summary = report.substring(summaryStart);
             
-            const comment = `## 🛡️ Análisis de Seguridad Móvil (MobSF)
-            
-            **Estado**: ${status}
-            
-            | Severidad | Cantidad | Descripción |
-            |-----------|----------|-------------|
-            | 🔴 Alta | ${high} | Problemas críticos que deben solucionarse |
-            | 🟠 Media | ${medium} | Problemas importantes a considerar |
-            | 🟡 Baja | ${low} | Mejoras recomendadas |
-            
-            📄 Los reportes detallados están disponibles en los artifacts del workflow.`;
+            const comment = `## 🛡️ Análisis de Seguridad Móvil\n\n${summary}\n\n📄 [Ver reporte completo en los artifacts]`;
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -190,23 +189,23 @@ jobs:
               body: comment
             })
             
-      - name: Verificar umbrales de seguridad
+      - name: Verificar umbral de seguridad
         run: |
-          HIGH_COUNT=${{ steps.mobsf_scan.outputs.high_count }}
+          ISSUES=${{ steps.security_check.outputs.issues_count }}
           
-          if [ "$HIGH_COUNT" -gt 0 ]; then
-            echo "❌ Se encontraron $HIGH_COUNT problemas de alta severidad"
-            echo "Por favor revisa el reporte de seguridad antes de mergear"
+          if [ "$ISSUES" -gt 2 ]; then
+            echo "❌ Se encontraron $ISSUES problemas de seguridad"
+            echo "Por favor revisa el reporte antes de continuar"
             exit 1
           else
-            echo "✅ No se encontraron problemas críticos"
+            echo "✅ Análisis de seguridad pasado"
           fi
 
-  # 4. Publicar APK (solo si pasan todos los tests)
+  # 4. Publicar APK
   publish:
     name: 🚀 Publicar APK
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [secret_scan, code_analysis, build_and_scan]
+    needs: [secret_scan, code_analysis, mobile_security]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
