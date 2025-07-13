@@ -85,31 +85,7 @@ class HomeScreen extends ConsumerWidget {
           backgroundColor: colors.primary.withOpacity(0.05),
           actions: [
             // Botón de prueba con estado de permisos
-            Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: Consumer(
-                builder: (context, ref, child) {
-                  final notificationState = ref.watch(notificationProvider);
-                  final hasPermissions = notificationState.permissionsGranted;
-                  
-                  return IconButton(
-                    icon: Icon(
-                      hasPermissions ? Icons.bug_report : Icons.notifications_off,
-                      color: hasPermissions ? Colors.orange : Colors.red,
-                    ),
-                    tooltip: hasPermissions ? 'Probar Notificación' : 'Activar Permisos',
-                    onPressed: () async {
-                      if (hasPermissions) {
-                        print('🧪 Testing notification...');
-                        await ref.read(notificationProvider.notifier).testLocalNotification();
-                      } else {
-                        _showPermissionDialog(context, ref);
-                      }
-                    },
-                  );
-                },
-              ),
-            ),
+
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
               child: NotificationBadge(
@@ -231,10 +207,11 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  void _handleNotificationTap(BuildContext context, notification, WidgetRef ref) {
+  void _handleNotificationTap(
+      BuildContext context, notification, WidgetRef ref) {
     final notificationNotifier = ref.read(notificationProvider.notifier);
     notificationNotifier.markAsRead(notification.id);
-    
+
     // Navegar según el tipo de notificación
     final type = notification.type;
     switch (type) {
@@ -262,7 +239,7 @@ class HomeScreen extends ConsumerWidget {
 
   void _showNotificationList(BuildContext context, WidgetRef ref) {
     final notifications = ref.read(notificationProvider).notifications;
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -290,7 +267,9 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   TextButton(
                     onPressed: () {
-                      ref.read(notificationProvider.notifier).clearNotifications();
+                      ref
+                          .read(notificationProvider.notifier)
+                          .clearNotifications();
                       Navigator.pop(context);
                     },
                     child: const Text('Limpiar todo'),
@@ -304,7 +283,8 @@ class HomeScreen extends ConsumerWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.notifications_none, size: 64, color: Colors.grey),
+                          Icon(Icons.notifications_none,
+                              size: 64, color: Colors.grey),
                           SizedBox(height: 16),
                           Text(
                             'No hay notificaciones',
@@ -320,28 +300,29 @@ class HomeScreen extends ConsumerWidget {
                         final notification = notifications[index];
                         return ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: notification.read 
-                                ? Colors.grey.shade300 
+                            backgroundColor: notification.read
+                                ? Colors.grey.shade300
                                 : Theme.of(context).colorScheme.primary,
                             child: Icon(
                               _getNotificationIcon(notification.type),
-                              color: notification.read 
-                                  ? Colors.grey.shade600 
+                              color: notification.read
+                                  ? Colors.grey.shade600
                                   : Colors.white,
                             ),
                           ),
                           title: Text(
                             notification.title,
                             style: TextStyle(
-                              fontWeight: notification.read 
-                                  ? FontWeight.normal 
+                              fontWeight: notification.read
+                                  ? FontWeight.normal
                                   : FontWeight.bold,
                             ),
                           ),
                           subtitle: Text(notification.body),
                           trailing: Text(
                             _formatTimestamp(notification.timestamp),
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            style: const TextStyle(
+                                fontSize: 12, color: Colors.grey),
                           ),
                           onTap: () {
                             Navigator.pop(context);
@@ -377,7 +358,7 @@ class HomeScreen extends ConsumerWidget {
   String _formatTimestamp(DateTime timestamp) {
     final now = DateTime.now();
     final difference = now.difference(timestamp);
-    
+
     if (difference.inDays > 0) {
       return '${difference.inDays}d';
     } else if (difference.inHours > 0) {
@@ -472,14 +453,16 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _requestNotificationPermissions(BuildContext context, WidgetRef ref) async {
+  Future<void> _requestNotificationPermissions(
+      BuildContext context, WidgetRef ref) async {
     try {
       // Intentar solicitar permisos
       await ref.read(notificationProvider.notifier).requestPermissions();
-      
+
       // Verificar si se otorgaron
-      final hasPermission = await ref.read(notificationProvider.notifier).checkPermissions();
-      
+      final hasPermission =
+          await ref.read(notificationProvider.notifier).checkPermissions();
+
       if (hasPermission) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
