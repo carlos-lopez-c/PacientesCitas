@@ -165,6 +165,7 @@ class AppointmentDatasourceImpl implements AppointmentDatasource {
           .map((snapshot) {
         return snapshot.docs.map((doc) {
           Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+          data['id'] = doc.id;
 
           String specialtyId = data['specialtyTherapyId'] ?? '';
           String specialtyName =

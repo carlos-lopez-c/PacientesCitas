@@ -9,6 +9,7 @@ import 'package:fundacion_paciente_app/config/routes/app_routes.dart';
 import 'package:fundacion_paciente_app/home/domain/usecases/appointment_usecase.dart';
 import 'package:flutter/material.dart';
 import 'package:fundacion_paciente_app/shared/infrastructure/errors/custom_error.dart';
+import 'package:fundacion_paciente_app/home/presentation/providers/appointment_notification_provider.dart';
 
 // 🔹 Provider del estado de citas médicas
 final appointmentProvider =
@@ -25,10 +26,12 @@ class AppointmentNotifier extends StateNotifier<AppointmentState> {
   final Ref ref;
   final String patientId;
   StreamSubscription<List<Appointments>>? _subscription;
+  AppointmentNotificationService? _notificationService;
 
   AppointmentNotifier(this._useCase, this.ref, this.patientId)
       : super(AppointmentState()) {
     if (patientId.isNotEmpty) {
+      _notificationService = ref.read(appointmentNotificationProvider);
       _listenToAppointments(); // Escuchar cambios en tiempo real
     }
   }
@@ -37,6 +40,9 @@ class AppointmentNotifier extends StateNotifier<AppointmentState> {
   void _listenToAppointments() {
     _subscription =
         _useCase.streamAppointments(patientId).listen((appointments) {
+      // Detectar cambios para notificaciones
+      _notificationService?.handleAppointmentChanges(appointments);
+      
       state = state.copyWith(appointments: appointments);
     });
   }

@@ -21,6 +21,11 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<User?> getCurrentUser() {
+    return authDatasource.getCurrentUser();
+  }
+
+  @override
   Future<bool> register(RequestData user) {
     return authDatasource.register(user);
   }
@@ -48,5 +53,10 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<String> resendPhoneCode(String phoneNumber) {
     return authDatasource.resendPhoneCode(phoneNumber);
+  }
+
+  @override
+  Future<bool> signOut() {
+    return authDatasource.signOut();
   }
 }

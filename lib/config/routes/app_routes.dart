@@ -20,10 +20,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isGoingTo = state.uri.path;
       final authStatus = goRouterNotifier.authStatus;
+
+      print(
+          '🔄 Router redirect - Going to: $isGoingTo, AuthStatus: $authStatus');
+
       if (authStatus == AuthStatus.requires2FA) {
         if (isGoingTo == '/verify-2fa') {
+          print('✅ Already on verify-2fa page');
           return null;
         }
+        print('🔐 Redirecting to /verify-2fa');
         return '/verify-2fa';
       }
 
@@ -32,9 +38,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             isGoingTo == '/forgot-password' ||
             isGoingTo == '/register' ||
             isGoingTo == '/verify-2fa') {
+          print('✅ Already on auth page');
           return null;
         }
-        print('Redirecting to /login');
+        print('🔄 Redirecting to /login');
         return '/login';
       }
 
@@ -44,10 +51,12 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             isGoingTo == '/forgot-password' ||
             isGoingTo == '/register' ||
             isGoingTo == '/verify-2fa') {
-          return '/';
+          print('🏠 Redirecting to /home');
+          return '/home';
         }
       }
 
+      print('✅ No redirect needed');
       return null;
     },
     routes: [

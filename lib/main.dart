@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:fundacion_paciente_app/notifications/presentation/providers/notification_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,6 +27,10 @@ class MainApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appRouter = ref.watch(goRouterProvider);
+    
+    // Inicializar notificaciones al iniciar la app
+    ref.watch(notificationProvider);
+    
     return MaterialApp.router(
       locale: const Locale('es'),
       localizationsDelegates: const [

@@ -96,7 +96,7 @@ class LoginScreen extends ConsumerWidget {
                     child: Column(
                       children: [
                         Text(
-                          'Bienvenido a la aplicación para la toma de citas medicas',
+                          'Bienvenido a la aplicación para la toma de citas médicas',
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w500,

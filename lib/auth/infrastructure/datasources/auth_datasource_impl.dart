@@ -5,8 +5,9 @@ import 'package:fundacion_paciente_app/auth/domain/datasources/auth_datasource.d
 import 'package:fundacion_paciente_app/auth/domain/entities/user_entities.dart';
 import 'package:fundacion_paciente_app/auth/domain/entities/user_information_entities.dart';
 import 'package:fundacion_paciente_app/auth/domain/entities/user_register.dart';
+import 'package:fundacion_paciente_app/auth/infrastructure/services/auth_session_service.dart';
+import 'package:fundacion_paciente_app/shared/infrastructure/services/key_value_storage_service_impl.dart';
 import 'package:fundacion_paciente_app/shared/infrastructure/errors/handle_error.dart';
-import 'package:fundacion_paciente_app/shared/infrastructure/errors/custom_error.dart';
 import 'dart:async';
 import 'dart:math';
 
@@ -14,6 +15,11 @@ class FirebaseAuthDatasource implements AuthDatasource {
   final firebase_auth.FirebaseAuth _firebaseAuth =
       firebase_auth.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  late final AuthSessionService _sessionService;
+
+  FirebaseAuthDatasource() {
+    _sessionService = AuthSessionService(KeyValueStorageServiceImpl());
+  }
 
   /// Formatea el número de teléfono al formato E.164
   String _formatPhoneNumber(String phoneNumber) {
@@ -104,29 +110,56 @@ class FirebaseAuthDatasource implements AuthDatasource {
   @override
   Future<User> checkAuthStatus() async {
     try {
+      // 🔥 Fast path: verificar inmediatamente si hay usuario
       final user = _firebaseAuth.currentUser;
       if (user == null) {
+        // Limpiar sesión de forma asíncrona pero no esperar
+        _sessionService
+            .clearSession()
+            .catchError((e) => print('Error clearing session: $e'));
         throw FirebaseException(
             plugin: 'auth',
             code: 'no-auth',
             message: 'No hay usuario autenticado.');
       }
 
-      // Obtener los datos del usuario
+      // Verificar estado de sesión primero (más rápido que Firestore)
+      final has2FACompleted =
+          await _sessionService.hasTwoFactorCompleted(user.uid);
+      final hasValidSession = await _sessionService.hasValidSession();
+
+      // Si ya completó 2FA y tiene sesión válida, solo obtener datos del usuario
+      if (has2FACompleted && hasValidSession) {
+        print('✅ User already authenticated with 2FA, session valid');
+        final userData = await _fetchUserData(user.uid);
+        return userData;
+      }
+
+      // Obtener los datos del usuario para verificar si necesita 2FA
       final userData = await _fetchUserData(user.uid);
 
-      // Si el usuario tiene teléfono registrado, cerrar sesión para forzar 2FA
+      // Si el usuario tiene teléfono registrado y NO ha completado 2FA, requerir 2FA
       if (userData.userInformation.phone != null &&
-          userData.userInformation.phone!.isNotEmpty) {
-        await _firebaseAuth.signOut();
+          userData.userInformation.phone!.isNotEmpty &&
+          !has2FACompleted) {
+        print('🔐 User requires 2FA verification');
         throw FirebaseException(
             plugin: 'auth',
             code: 'requires-2fa',
             message: 'Se requiere autenticación de dos factores.');
       }
 
+      // Si no tiene teléfono registrado, marcar sesión como válida
+      if (userData.userInformation.phone == null ||
+          userData.userInformation.phone!.isEmpty) {
+        await _sessionService.setTwoFactorCompleted(user.uid);
+      }
+
       return userData;
     } catch (e) {
+      if (e is FirebaseException && e.code == 'requires-2fa') {
+        rethrow;
+      }
       throw FirebaseErrorHandler.handleGenericException(e);
     }
   }
@@ -145,10 +178,32 @@ class FirebaseAuthDatasource implements AuthDatasource {
   }
 
   @override
+  Future<User?> getCurrentUser() async {
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user == null) {
+        return null;
+      }
+
+      // Obtener los datos del usuario sin verificar 2FA
+      final userData = await _fetchUserData(user.uid);
+      return userData;
+    } catch (e) {
+      print("❌ Error getting current user: $e");
+      return null;
+    }
+  }
+
+  @override
   Future<void> logout() async {
     try {
       await _firebaseAuth.signOut();
+      await _sessionService.clearSession();
+      print("✅ Sesión cerrada y estado limpiado");
     } catch (e) {
+      print("❌ Error cerrando sesión: $e");
+      // Limpiar sesión aunque falle Firebase signOut
+      await _sessionService.clearSession();
       throw FirebaseErrorHandler.handleGenericException(e);
     }
   }
@@ -204,7 +259,6 @@ class FirebaseAuthDatasource implements AuthDatasource {
       throw FirebaseErrorHandler.handleFirebaseAuthException(e);
     } catch (e) {
       print('Error en sendPhoneVerification: $e');
-      if (e is CustomError) throw e;
       throw FirebaseErrorHandler.handleGenericException(e);
     }
   }
@@ -212,13 +266,14 @@ class FirebaseAuthDatasource implements AuthDatasource {
   @override
   Future<bool> verifyPhoneCode(String verificationId, String code) async {
     try {
-      print("Verification ID: $verificationId");
-      print("Code: $code");
+      print("🔐 Verifying phone code: $code");
+      print("🔐 Verification ID: $verificationId");
+
+      // Crear credencial con el código proporcionado
       final credential = firebase_auth.PhoneAuthProvider.credential(
         verificationId: verificationId,
         smsCode: code,
       );
-      print("Credential: ${credential}");
 
       // Verificar si hay un usuario ya autenticado por correo
       final currentUser = _firebaseAuth.currentUser;
@@ -226,33 +281,76 @@ class FirebaseAuthDatasource implements AuthDatasource {
       if (currentUser != null &&
           currentUser.email != null &&
           currentUser.email!.isNotEmpty) {
-        // Si hay un usuario con correo, vincular las credenciales de teléfono
+        // Si hay un usuario con correo, verificar las credenciales de teléfono
         try {
+          // Primero verificar si el teléfono ya está vinculado
+          final providers = currentUser.providerData;
+          final hasPhoneProvider =
+              providers.any((provider) => provider.providerId == 'phone');
+
+          if (hasPhoneProvider) {
+            // El teléfono ya está vinculado, solo marcar como completado
+            print("✅ Phone already linked, marking 2FA as completed");
+            await _sessionService.setTwoFactorCompleted(currentUser.uid);
+            return true;
+          }
+
+          // Intentar vincular las credenciales - esto DEBE funcionar si el código es correcto
           await currentUser.linkWithCredential(credential);
-          print("Credenciales vinculadas exitosamente");
+          print("✅ Credenciales vinculadas exitosamente");
+
+          // Marcar 2FA como completado en la sesión
+          await _sessionService.setTwoFactorCompleted(currentUser.uid);
           return true;
-        } catch (linkError) {
-          print("Error al vincular credenciales: $linkError");
-          // Si no se puede vincular (por ejemplo, si el teléfono ya está en uso),
-          // aún podemos autenticar al usuario con su correo original
-          return true;
+        } on firebase_auth.FirebaseAuthException catch (linkError) {
+          print(
+              "❌ Error al vincular credenciales: ${linkError.code} - ${linkError.message}");
+
+          // Manejar errores específicos de Firebase Auth
+          if (linkError.code == 'provider-already-linked') {
+            // El teléfono ya está vinculado, simplemente marcar como completado
+            print("✅ Phone already linked, marking 2FA as completed");
+            await _sessionService.setTwoFactorCompleted(currentUser.uid);
+            return true;
+          } else {
+            // Otros errores de vinculación - delegar al handler
+            throw FirebaseErrorHandler.handleFirebaseAuthException(linkError);
+          }
         }
       } else {
         // Si no hay un usuario autenticado por correo, hacer el login normal con teléfono
-        await _firebaseAuth.signInWithCredential(credential);
-        print("Sign In With Credential: ${_firebaseAuth.currentUser}");
-        return true;
+        try {
+          final userCredential =
+              await _firebaseAuth.signInWithCredential(credential);
+          if (userCredential.user != null) {
+            print("✅ Sign In With Credential exitoso");
+            await _sessionService
+                .setTwoFactorCompleted(userCredential.user!.uid);
+            return true;
+          } else {
+            throw FirebaseException(
+              plugin: 'auth',
+              code: 'sign-in-failed',
+              message: 'Error en la autenticación con credencial',
+            );
+          }
+        } on firebase_auth.FirebaseAuthException catch (signInError) {
+          print(
+              "❌ Error en signInWithCredential: ${signInError.code} - ${signInError.message}");
+          throw FirebaseErrorHandler.handleFirebaseAuthException(signInError);
+        }
       }
     } on firebase_auth.FirebaseAuthException catch (e) {
-      print("Error: ${e}");
+      print("❌ FirebaseAuthException: ${e.code} - ${e.message}");
       throw FirebaseErrorHandler.handleFirebaseAuthException(e);
     } on FirebaseException catch (e) {
-      print("Error: ${e}");
+      print("❌ FirebaseException: ${e.code} - ${e.message}");
       throw FirebaseErrorHandler.handleFirebaseException(e);
     } on PlatformException catch (e) {
+      print("❌ PlatformException: $e");
       throw FirebaseErrorHandler.handlePlatformException(e);
     } catch (e) {
-      print("Error: ${e}");
+      print("❌ Generic Error: $e");
       throw FirebaseErrorHandler.handleGenericException(e);
     }
   }
@@ -449,6 +547,16 @@ class FirebaseAuthDatasource implements AuthDatasource {
       throw FirebaseErrorHandler.handleFirebaseException(e);
     } on PlatformException catch (e) {
       throw FirebaseErrorHandler.handlePlatformException(e);
+    } catch (e) {
+      throw FirebaseErrorHandler.handleGenericException(e);
+    }
+  }
+
+  @override
+  Future<bool> signOut() async {
+    try {
+      await _firebaseAuth.signOut();
+      return true;
     } catch (e) {
       throw FirebaseErrorHandler.handleGenericException(e);
     }
