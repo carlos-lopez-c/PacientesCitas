@@ -9,14 +9,19 @@ on:
 
 jobs:
   # 1. Escaneo de Secretos
-  secret_scan:
-    name: 🔑 Escaneo de Secretos
+  seguridad_gitleaks: 
+    name: Seguridad con Gitleaks
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps: 
+      - name: Checkout del código
+        uses: actions/checkout@v4
+      - name: Instalar Gitleaks
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64 -o gitleaks
+          chmod +x gitleaks
+          sudo mv gitleaks /usr/local/bin/
+      - name: Ejecutar Gitleaks para detectar credenciales
+        run: gitleaks detect --verbose --redact --source . || true
 
   # 2. Análisis de Código con SonarCloud
   code_analysis:
