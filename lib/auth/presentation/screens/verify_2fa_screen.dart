@@ -206,23 +206,50 @@ class _Verify2FAScreenState extends ConsumerState<Verify2FAScreen>
                                 isLoading: authState.isLoading,
                               ),
                               const SizedBox(height: 20),
-                              TextButton.icon(
-                                onPressed: authState.isLoading
-                                    ? null
-                                    : () {
-                                        ref
-                                            .read(authProvider.notifier)
-                                            .resendPhoneCode();
-                                      },
-                                icon:
-                                    Icon(Icons.refresh, color: colors.primary),
-                                label: Text(
-                                  'Reenviar código',
-                                  style: TextStyle(
-                                    color: colors.primary,
-                                    fontWeight: FontWeight.bold,
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextButton.icon(
+                                      onPressed: authState.isLoading
+                                          ? null
+                                          : () {
+                                              ref
+                                                  .read(authProvider.notifier)
+                                                  .resendPhoneCode();
+                                            },
+                                      icon: Icon(Icons.refresh, color: colors.primary),
+                                      label: Text(
+                                        'Reenviar código',
+                                        style: TextStyle(
+                                          color: colors.primary,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: TextButton.icon(
+                                      onPressed: authState.isLoading
+                                          ? null
+                                          : () {
+                                              // Limpiar el estado de autenticación y volver al login
+                                              ref
+                                                  .read(authProvider.notifier)
+                                                  .cancelPhoneAuth();
+                                              context.go('/login');
+                                            },
+                                      icon: Icon(Icons.cancel_outlined, color: Colors.red),
+                                      label: Text(
+                                        'Cancelar',
+                                        style: TextStyle(
+                                          color: Colors.red,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),

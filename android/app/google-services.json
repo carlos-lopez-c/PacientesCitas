@@ -9,26 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:363946695455:android:a6bba90881cce96de2ae2a",
         "android_client_info": {
-          "package_name": "com.example.citas_paciente_funesami"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyCpoI4msW4oc3sMlApU0S-GLjXI8YedBWE"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:363946695455:android:7c270cc1f4a01431e2ae2a",
-        "android_client_info": {
-          "package_name": "com.example.h_c_1"
+          "package_name": "app.funesami.citas_paciente"
         }
       },
       "oauth_client": [],

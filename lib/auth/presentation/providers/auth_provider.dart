@@ -230,6 +230,33 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<void> cancelPhoneAuth() async {
+    try {
+      // Limpiar la sesión y volver al estado de no autenticado
+      await authRepository.logout();
+      await authSessionService.clearSession();
+      
+      state = state.copyWith(
+        authStatus: AuthStatus.notAuthenticated,
+        user: null,
+        errorMessage: '',
+        verificationId: null,
+        phoneNumber: null,
+        isLoading: false,
+      );
+    } catch (e) {
+      // En caso de error, al menos limpiar el estado local
+      state = state.copyWith(
+        authStatus: AuthStatus.notAuthenticated,
+        user: null,
+        errorMessage: '',
+        verificationId: null,
+        phoneNumber: null,
+        isLoading: false,
+      );
+    }
+  }
+
   Future<bool> registerUser(RequestData register) async {
     try {
       state = state.copyWith(

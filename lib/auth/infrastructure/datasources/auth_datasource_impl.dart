@@ -81,6 +81,19 @@ class FirebaseAuthDatasource implements AuthDatasource {
   @override
   Future<bool> register(RequestData requestData) async {
     try {
+      // Validar que el número de teléfono sea único ANTES de crear el usuario
+      final phoneNumber = requestData.createUser.userInformation.phone;
+      if (phoneNumber != null && phoneNumber.isNotEmpty) {
+        final isPhoneUnique = await _validatePhoneUniqueness(phoneNumber);
+        if (!isPhoneUnique) {
+          throw FirebaseException(
+            plugin: 'auth',
+            code: 'phone-already-exists',
+            message: 'Este número de teléfono ya está registrado con otra cuenta.',
+          );
+        }
+      }
+
       final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
         email: requestData.createUser.email,
         password: requestData.createUser.password,
@@ -281,51 +294,46 @@ class FirebaseAuthDatasource implements AuthDatasource {
       if (currentUser != null &&
           currentUser.email != null &&
           currentUser.email!.isNotEmpty) {
-        // Si hay un usuario con correo, verificar las credenciales de teléfono
+        // Si hay un usuario con correo, vincular las credenciales de teléfono
         try {
-          // Primero verificar si el teléfono ya está vinculado
-          final providers = currentUser.providerData;
-          final hasPhoneProvider =
-              providers.any((provider) => provider.providerId == 'phone');
-
-          if (hasPhoneProvider) {
-            // El teléfono ya está vinculado, solo marcar como completado
-            print("✅ Phone already linked, marking 2FA as completed");
-            await _sessionService.setTwoFactorCompleted(currentUser.uid);
-            return true;
-          }
-
-          // Intentar vincular las credenciales - esto DEBE funcionar si el código es correcto
+          // Intentar vincular las credenciales - esto VALIDARÁ el código automáticamente
           await currentUser.linkWithCredential(credential);
-          print("✅ Credenciales vinculadas exitosamente");
+          print("✅ Phone credential linked successfully");
 
           // Marcar 2FA como completado en la sesión
           await _sessionService.setTwoFactorCompleted(currentUser.uid);
           return true;
         } on firebase_auth.FirebaseAuthException catch (linkError) {
-          print(
-              "❌ Error al vincular credenciales: ${linkError.code} - ${linkError.message}");
-
-          // Manejar errores específicos de Firebase Auth
+          print("❌ Error linking credential: ${linkError.code} - ${linkError.message}");
+          
           if (linkError.code == 'provider-already-linked') {
-            // El teléfono ya está vinculado, simplemente marcar como completado
-            print("✅ Phone already linked, marking 2FA as completed");
-            await _sessionService.setTwoFactorCompleted(currentUser.uid);
-            return true;
+            // El teléfono ya está vinculado - usar reauthenticate para validar el código
+            print("📱 Phone already linked - validating code via reauthentication");
+            
+            try {
+              // Re-autenticar con el código - esto VALIDARÁ el código sin desvincular
+              await currentUser.reauthenticateWithCredential(credential);
+              print("✅ Code validated successfully via reauthentication");
+              
+              await _sessionService.setTwoFactorCompleted(currentUser.uid);
+              return true;
+            } on firebase_auth.FirebaseAuthException catch (reauthError) {
+              print("❌ Reauthentication failed: ${reauthError.code} - ${reauthError.message}");
+              // Si reauthenticate falla, el código es definitivamente inválido
+              throw FirebaseErrorHandler.handleFirebaseAuthException(reauthError);
+            }
           } else {
-            // Otros errores de vinculación - delegar al handler
+            // Otros errores (incluidos códigos inválidos)
             throw FirebaseErrorHandler.handleFirebaseAuthException(linkError);
           }
         }
       } else {
         // Si no hay un usuario autenticado por correo, hacer el login normal con teléfono
         try {
-          final userCredential =
-              await _firebaseAuth.signInWithCredential(credential);
+          final userCredential = await _firebaseAuth.signInWithCredential(credential);
           if (userCredential.user != null) {
-            print("✅ Sign In With Credential exitoso");
-            await _sessionService
-                .setTwoFactorCompleted(userCredential.user!.uid);
+            print("✅ Phone sign in successful");
+            await _sessionService.setTwoFactorCompleted(userCredential.user!.uid);
             return true;
           } else {
             throw FirebaseException(
@@ -335,8 +343,7 @@ class FirebaseAuthDatasource implements AuthDatasource {
             );
           }
         } on firebase_auth.FirebaseAuthException catch (signInError) {
-          print(
-              "❌ Error en signInWithCredential: ${signInError.code} - ${signInError.message}");
+          print("❌ Error in signInWithCredential: ${signInError.code} - ${signInError.message}");
           throw FirebaseErrorHandler.handleFirebaseAuthException(signInError);
         }
       }
@@ -521,6 +528,35 @@ class FirebaseAuthDatasource implements AuthDatasource {
       throw FirebaseErrorHandler.handlePlatformException(e);
     } catch (e) {
       throw FirebaseErrorHandler.handleGenericException(e);
+    }
+  }
+
+  /// 🔹 Valida que el número de teléfono sea único en la base de datos
+  Future<bool> _validatePhoneUniqueness(String phoneNumber) async {
+    try {
+      // Normalizar el número de teléfono para la búsqueda
+      final normalizedPhone = _formatPhoneNumber(phoneNumber);
+      
+      // Buscar en la colección userInformation si ya existe ese teléfono
+      final querySnapshot = await _firestore
+          .collection('userInformation')
+          .where('phone', isEqualTo: normalizedPhone)
+          .limit(1)
+          .get();
+
+      // También buscar por el número sin formato por si acaso
+      final querySnapshot2 = await _firestore
+          .collection('userInformation')
+          .where('phone', isEqualTo: phoneNumber)
+          .limit(1)
+          .get();
+
+      // Si no encontramos ningún documento, el teléfono es único
+      return querySnapshot.docs.isEmpty && querySnapshot2.docs.isEmpty;
+    } catch (e) {
+      print('Error validando unicidad del teléfono: $e');
+      // En caso de error, ser conservador y no permitir el registro
+      return false;
     }
   }
 

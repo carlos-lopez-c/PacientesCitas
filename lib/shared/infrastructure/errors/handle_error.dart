@@ -50,6 +50,10 @@ class FirebaseErrorHandler {
       case 'requires-2fa':
         return CustomError('Se requiere verificación de dos factores.',
             code: e.code);
+      case 'phone-already-exists':
+        return CustomError(
+            'Este número de teléfono ya está registrado con otra cuenta.',
+            code: e.code);
       default:
         return CustomError(
             'Ha ocurrido un error. Por favor, intenta nuevamente.',
@@ -90,6 +94,10 @@ class FirebaseErrorHandler {
         return CustomError('No hay una sesión activa.', code: e.code);
       case 'requires-2fa':
         return CustomError('Se requiere verificación de dos factores.',
+            code: e.code);
+      case 'phone-already-exists':
+        return CustomError(
+            'Este número de teléfono ya está registrado con otra cuenta.',
             code: e.code);
       default:
         return CustomError(

@@ -41,12 +41,12 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAckV13rjrS14o9hC1QDIEXTUrdZLu4z_o',
-    appId: '1:319158977737:web:65599e0e835ed25f257918',
-    messagingSenderId: '319158977737',
-    projectId: 'hctssapp',
-    authDomain: 'hctssapp.firebaseapp.com',
-    storageBucket: 'hctssapp.firebasestorage.app',
+    apiKey: 'AIzaSyCpoI4msW4oc3sMlApU0S-GLjXI8YedBWE',
+    appId: '1:363946695455:web:placeholder',
+    messagingSenderId: '363946695455',
+    projectId: 'funesamiapphc',
+    authDomain: 'funesamiapphc.firebaseapp.com',
+    storageBucket: 'funesamiapphc.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
@@ -58,29 +58,29 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBwDsRq4IG25Mf_t91QPlkMcHOT6FyRgg4',
-    appId: '1:319158977737:ios:b35c152871fcaf05257918',
-    messagingSenderId: '319158977737',
-    projectId: 'hctssapp',
-    storageBucket: 'hctssapp.firebasestorage.app',
-    iosBundleId: 'com.example.citasPacienteFunesami',
+    apiKey: 'AIzaSyCpoI4msW4oc3sMlApU0S-GLjXI8YedBWE',
+    appId: '1:363946695455:ios:placeholder',
+    messagingSenderId: '363946695455',
+    projectId: 'funesamiapphc',
+    storageBucket: 'funesamiapphc.firebasestorage.app',
+    iosBundleId: 'app.funesami.citas-paciente',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBwDsRq4IG25Mf_t91QPlkMcHOT6FyRgg4',
-    appId: '1:319158977737:ios:b35c152871fcaf05257918',
-    messagingSenderId: '319158977737',
-    projectId: 'hctssapp',
-    storageBucket: 'hctssapp.firebasestorage.app',
-    iosBundleId: 'com.example.citasPacienteFunesami',
+    apiKey: 'AIzaSyCpoI4msW4oc3sMlApU0S-GLjXI8YedBWE',
+    appId: '1:363946695455:ios:placeholder',
+    messagingSenderId: '363946695455',
+    projectId: 'funesamiapphc',
+    storageBucket: 'funesamiapphc.firebasestorage.app',
+    iosBundleId: 'app.funesami.citas-paciente',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyAckV13rjrS14o9hC1QDIEXTUrdZLu4z_o',
-    appId: '1:319158977737:web:7b7871176b465d66257918',
-    messagingSenderId: '319158977737',
-    projectId: 'hctssapp',
-    authDomain: 'hctssapp.firebaseapp.com',
-    storageBucket: 'hctssapp.firebasestorage.app',
+    apiKey: 'AIzaSyCpoI4msW4oc3sMlApU0S-GLjXI8YedBWE',
+    appId: '1:363946695455:web:placeholder',
+    messagingSenderId: '363946695455',
+    projectId: 'funesamiapphc',
+    authDomain: 'funesamiapphc.firebaseapp.com',
+    storageBucket: 'funesamiapphc.firebasestorage.app',
   );
 }
