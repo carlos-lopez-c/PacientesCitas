@@ -88,21 +88,6 @@ class HomeScreen extends ConsumerWidget {
 
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
-              child: NotificationBadge(
-                child: IconButton(
-                  icon: Icon(
-                    Icons.notifications_rounded,
-                    color: colors.primary,
-                  ),
-                  tooltip: 'Notificaciones',
-                  onPressed: () {
-                    _showNotificationList(context, ref);
-                  },
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(right: 8.0),
               child: IconButton(
                 icon: Icon(
                   Icons.logout_rounded,
@@ -235,107 +220,6 @@ class HomeScreen extends ConsumerWidget {
         DefaultTabController.of(context).animateTo(0);
         break;
     }
-  }
-
-  void _showNotificationList(BuildContext context, WidgetRef ref) {
-    final notifications = ref.read(notificationProvider).notifications;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        maxChildSize: 0.9,
-        minChildSize: 0.5,
-        expand: false,
-        builder: (context, scrollController) => Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Notificaciones',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      ref
-                          .read(notificationProvider.notifier)
-                          .clearNotifications();
-                      Navigator.pop(context);
-                    },
-                    child: const Text('Limpiar todo'),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: notifications.isEmpty
-                  ? const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.notifications_none,
-                              size: 64, color: Colors.grey),
-                          SizedBox(height: 16),
-                          Text(
-                            'No hay notificaciones',
-                            style: TextStyle(color: Colors.grey, fontSize: 16),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      controller: scrollController,
-                      itemCount: notifications.length,
-                      itemBuilder: (context, index) {
-                        final notification = notifications[index];
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: notification.read
-                                ? Colors.grey.shade300
-                                : Theme.of(context).colorScheme.primary,
-                            child: Icon(
-                              _getNotificationIcon(notification.type),
-                              color: notification.read
-                                  ? Colors.grey.shade600
-                                  : Colors.white,
-                            ),
-                          ),
-                          title: Text(
-                            notification.title,
-                            style: TextStyle(
-                              fontWeight: notification.read
-                                  ? FontWeight.normal
-                                  : FontWeight.bold,
-                            ),
-                          ),
-                          subtitle: Text(notification.body),
-                          trailing: Text(
-                            _formatTimestamp(notification.timestamp),
-                            style: const TextStyle(
-                                fontSize: 12, color: Colors.grey),
-                          ),
-                          onTap: () {
-                            Navigator.pop(context);
-                            _handleNotificationTap(context, notification, ref);
-                          },
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   IconData _getNotificationIcon(String type) {

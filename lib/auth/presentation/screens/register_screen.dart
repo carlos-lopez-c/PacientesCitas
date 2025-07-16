@@ -15,6 +15,8 @@ class RegisterScreen extends ConsumerStatefulWidget {
 }
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
+  bool _hasShownSuccess = false;
+
   @override
   void initState() {
     super.initState();
@@ -30,7 +32,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final size = MediaQuery.of(context).size;
 
     ref.listen<AuthState>(authProvider, (previous, next) {
-      if (next.successMessage.isNotEmpty) {
+      if (next.successMessage.isNotEmpty && !_hasShownSuccess) {
+        _hasShownSuccess = true;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(next.successMessage),
@@ -44,6 +47,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         );
         Future.delayed(const Duration(seconds: 2), () {
           ref.read(authProvider.notifier).clearSuccessMessage();
+          _hasShownSuccess = false;
           context.go('/login');
         });
       }

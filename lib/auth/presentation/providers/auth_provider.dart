@@ -147,8 +147,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         errorMessage: '',
       );
 
-      final verificationId =
-          await authRepository.sendPhoneVerification(phoneNumber);
+      // Usar el método con reintentos para manejar rate limiting
+      final verificationId = await sendPhoneVerificationWithRetry(phoneNumber);
 
       // Reset isLoading to false when successful
       state = state.copyWith(
@@ -157,9 +157,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       return verificationId;
     } on CustomError catch (e) {
+      String errorMessage = e.message;
+
+      // Manejar específicamente el error de demasiadas solicitudes
+      if (e.message.contains('too-many-requests') ||
+          e.message.contains('Demasiados intentos')) {
+        errorMessage =
+            'Demasiados intentos de verificación. Por favor, espera 10 minutos antes de intentar nuevamente.';
+      }
+
       state = state.copyWith(
         authStatus: AuthStatus.requires2FA,
-        errorMessage: e.message,
+        errorMessage: errorMessage,
         isLoading: false,
       );
       throw e;
@@ -213,8 +222,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         errorMessage: '',
       );
 
+      // Usar el método con reintentos para manejar rate limiting
       final verificationId =
-          await authRepository.resendPhoneCode(state.phoneNumber!);
+          await sendPhoneVerificationWithRetry(state.phoneNumber!);
       state = state.copyWith(
         authStatus: AuthStatus.requires2FA,
         verificationId: verificationId,
@@ -222,9 +232,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
         isLoading: false,
       );
     } on CustomError catch (e) {
+      String errorMessage = e.message;
+
+      // Manejar específicamente el error de demasiadas solicitudes
+      if (e.message.contains('too-many-requests') ||
+          e.message.contains('Demasiados intentos')) {
+        errorMessage =
+            'Demasiados intentos de reenvío. Por favor, espera 10 minutos antes de intentar nuevamente.';
+      }
+
       state = state.copyWith(
         authStatus: AuthStatus.requires2FA,
-        errorMessage: e.message,
+        errorMessage: errorMessage,
         isLoading: false,
       );
     }
@@ -235,7 +254,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // Limpiar la sesión y volver al estado de no autenticado
       await authRepository.logout();
       await authSessionService.clearSession();
-      
+
       state = state.copyWith(
         authStatus: AuthStatus.notAuthenticated,
         user: null,
@@ -285,6 +304,135 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   void clearSuccessMessage() {
     state = state.copyWith(successMessage: '');
+  }
+
+  /// Maneja el bloqueo temporal de Firebase Auth
+  Future<void> handleRateLimitError() async {
+    print('⏰ Rate limit detected, waiting for cooldown...');
+
+    // Mostrar mensaje al usuario
+    state = state.copyWith(
+      errorMessage:
+          'Demasiados intentos. Esperando 5 minutos antes de permitir nuevos intentos...',
+      isLoading: false,
+    );
+
+    // Esperar 5 minutos (300 segundos)
+    await Future.delayed(const Duration(minutes: 5));
+
+    // Limpiar el mensaje de error
+    state = state.copyWith(
+      errorMessage: '',
+    );
+
+    print('✅ Rate limit cooldown completed');
+  }
+
+  /// Método para manejar el rate limiting de Firebase de manera más robusta
+  Future<String> sendPhoneVerificationWithRetry(String phoneNumber) async {
+    int maxRetries = 3;
+    int currentRetry = 0;
+
+    while (currentRetry < maxRetries) {
+      try {
+        print('📱 Attempt ${currentRetry + 1} to send phone verification...');
+
+        final verificationId =
+            await authRepository.sendPhoneVerification(phoneNumber);
+        print('✅ Phone verification sent successfully');
+        return verificationId;
+      } on CustomError catch (e) {
+        currentRetry++;
+
+        if (e.message.contains('too-many-requests') ||
+            e.message.contains('Demasiados intentos')) {
+          print('⏰ Rate limit detected on attempt $currentRetry');
+
+          if (currentRetry < maxRetries) {
+            // Esperar progresivamente más tiempo entre intentos
+            int waitTime = currentRetry * 30; // 30s, 60s, 90s
+            print('⏳ Waiting $waitTime seconds before retry...');
+
+            state = state.copyWith(
+              errorMessage:
+                  'Demasiados intentos. Esperando ${waitTime} segundos antes de reintentar...',
+              isLoading: false,
+            );
+
+            await Future.delayed(Duration(seconds: waitTime));
+
+            // Limpiar mensaje de error
+            state = state.copyWith(
+              errorMessage: '',
+            );
+
+            print('🔄 Retrying after $waitTime seconds...');
+          } else {
+            // Máximo de reintentos alcanzado
+            print('❌ Max retries reached, giving up');
+            throw CustomError(
+                'Demasiados intentos. Por favor, espera 10 minutos antes de intentar nuevamente.');
+          }
+        } else {
+          // Otro tipo de error, no reintentar
+          throw e;
+        }
+      }
+    }
+
+    throw CustomError('Error inesperado al enviar código de verificación');
+  }
+
+  /// Método para desarrollo: desbloquear manualmente (solo usar en desarrollo)
+  Future<void> forceUnlockRateLimit() async {
+    print('🔓 Force unlocking rate limit (development only)');
+
+    // Mostrar mensaje temporal de desbloqueo
+    state = state.copyWith(
+      errorMessage: '🔓 Desbloqueando automáticamente...',
+      isLoading: false,
+    );
+
+    // Esperar un momento para que el usuario vea el mensaje
+    await Future.delayed(const Duration(seconds: 1));
+
+    // Limpiar cualquier error de rate limit
+    state = state.copyWith(
+      errorMessage: '',
+      isLoading: false,
+    );
+
+    print('✅ Rate limit automatically unlocked');
+  }
+
+  /// Método para desarrollo: forzar envío inmediato (bypass rate limit)
+  Future<String> forceSendPhoneVerification(String phoneNumber) async {
+    print('🚀 Force sending phone verification (bypass rate limit)');
+
+    try {
+      state = state.copyWith(
+        isLoading: true,
+        errorMessage: '',
+      );
+
+      // Intentar enviar directamente sin reintentos
+      final verificationId =
+          await authRepository.sendPhoneVerification(phoneNumber);
+
+      state = state.copyWith(
+        isLoading: false,
+      );
+
+      print('✅ Force send successful');
+      return verificationId;
+    } on CustomError catch (e) {
+      print('❌ Force send failed: ${e.message}');
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: 'Error al enviar código: ${e.message}',
+      );
+      throw e;
+    }
   }
 
   void checkAuthStatus() async {

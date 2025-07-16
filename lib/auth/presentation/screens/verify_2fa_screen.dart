@@ -217,7 +217,8 @@ class _Verify2FAScreenState extends ConsumerState<Verify2FAScreen>
                                                   .read(authProvider.notifier)
                                                   .resendPhoneCode();
                                             },
-                                      icon: Icon(Icons.refresh, color: colors.primary),
+                                      icon: Icon(Icons.refresh,
+                                          color: colors.primary),
                                       label: Text(
                                         'Reenviar código',
                                         style: TextStyle(
@@ -239,7 +240,8 @@ class _Verify2FAScreenState extends ConsumerState<Verify2FAScreen>
                                                   .cancelPhoneAuth();
                                               context.go('/login');
                                             },
-                                      icon: Icon(Icons.cancel_outlined, color: Colors.red),
+                                      icon: Icon(Icons.cancel_outlined,
+                                          color: Colors.red),
                                       label: Text(
                                         'Cancelar',
                                         style: TextStyle(
@@ -251,6 +253,41 @@ class _Verify2FAScreenState extends ConsumerState<Verify2FAScreen>
                                   ),
                                 ],
                               ),
+                              // Mostrar información sobre rate limiting si hay error
+                              if (authState.errorMessage.isNotEmpty &&
+                                  (authState.errorMessage
+                                          .contains('Demasiados intentos') ||
+                                      authState.errorMessage
+                                          .contains('too-many-requests')))
+                                Container(
+                                  margin: const EdgeInsets.only(top: 15),
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                        color: Colors.orange.shade200),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.timer,
+                                        color: Colors.orange.shade700,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Por seguridad, Firebase ha bloqueado temporalmente las verificaciones. Espera 5-10 minutos antes de intentar nuevamente.',
+                                          style: TextStyle(
+                                            color: Colors.orange.shade800,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                             ],
                           ),
                         ),
