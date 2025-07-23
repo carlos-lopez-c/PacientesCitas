@@ -1,0 +1,228 @@
+name: DevSecOps Mobile
+on: 
+  push: 
+    branches: 
+      - main
+  pull_request: 
+    branches: 
+      - main
+
+jobs:
+  # 1. Escaneo de Secretos
+  secret_scan:
+    name: Seguridad con Gitleaks
+    runs-on: ubuntu-latest
+    steps: 
+      - name: Checkout del código
+        uses: actions/checkout@v4
+      - name: Instalar Gitleaks
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64 -o gitleaks
+          chmod +x gitleaks
+          sudo mv gitleaks /usr/local/bin/
+      - name: Ejecutar Gitleaks para detectar credenciales
+        run: gitleaks detect --verbose --redact --source . || true
+
+
+  # 2. Análisis de Código con SonarCloud
+  code_analysis:
+    name: 🔍 Análisis de Código
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - uses: SonarSource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: "https://sonarcloud.io"
+
+  # 3. Build y Análisis con MobSF
+  build_and_scan:
+    name: 📱 Build y Análisis de Seguridad Móvil
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+        
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.3'
+          channel: 'stable'
+          
+      - name: Build APK
+        run: |
+          flutter pub get
+          flutter build apk --release
+          
+      - name: Preparar MobSF con Docker
+        run: |
+          # Descargar y ejecutar MobSF en Docker
+          docker pull opensecurity/mobile-security-framework-mobsf:latest
+          
+          # Ejecutar MobSF en background
+          docker run -d \
+            --name mobsf \
+            -p 8000:8000 \
+            opensecurity/mobile-security-framework-mobsf:latest
+          
+          # Esperar a que MobSF esté listo
+          echo "⏳ Esperando a que MobSF inicie..."
+          for i in {1..30}; do
+            if curl -f http://localhost:8000 > /dev/null 2>&1; then
+              echo "✅ MobSF está listo!"
+              break
+            fi
+            sleep 5
+          done
+          
+      - name: Analizar APK con MobSF
+        id: mobsf_scan
+        run: |
+          # API Key por defecto de MobSF
+          API_KEY="8012fc49fc6b44209e7cd2f4f5d16825c0f5d2c20d284667aa3cc996dee5eb4d"
+          APK_PATH="build/app/outputs/flutter-apk/app-release.apk"
+          
+          # 1. Subir APK
+          echo "📤 Subiendo APK a MobSF..."
+          UPLOAD_RESPONSE=$(curl -s -F "file=@$APK_PATH" \
+            -H "Authorization: $API_KEY" \
+            http://localhost:8000/api/v1/upload)
+          
+          HASH=$(echo $UPLOAD_RESPONSE | grep -o '"hash":"[^"]*' | cut -d'"' -f4)
+          echo "Hash del archivo: $HASH"
+          echo "hash=$HASH" >> $GITHUB_OUTPUT
+          
+          # 2. Iniciar escaneo
+          echo "🔍 Iniciando análisis..."
+          curl -s -X POST \
+            -H "Authorization: $API_KEY" \
+            -d "hash=$HASH" \
+            http://localhost:8000/api/v1/scan
+          
+          # 3. Esperar un poco para que termine
+          sleep 30
+          
+          # 4. Obtener resultados
+          echo "📊 Obteniendo resultados..."
+          REPORT=$(curl -s -X POST \
+            -H "Authorization: $API_KEY" \
+            -d "hash=$HASH" \
+            http://localhost:8000/api/v1/report_json)
+          
+          echo "$REPORT" > mobsf-report.json
+          
+          # 5. Analizar resultados básicos
+          echo "📈 Analizando resultados..."
+          
+          # Contar problemas por severidad (simplificado)
+          HIGH_COUNT=$(echo "$REPORT" | grep -o '"severity":"high"' | wc -l)
+          MEDIUM_COUNT=$(echo "$REPORT" | grep -o '"severity":"medium"' | wc -l)
+          LOW_COUNT=$(echo "$REPORT" | grep -o '"severity":"low"' | wc -l)
+          
+          echo "high_count=$HIGH_COUNT" >> $GITHUB_OUTPUT
+          echo "medium_count=$MEDIUM_COUNT" >> $GITHUB_OUTPUT
+          echo "low_count=$LOW_COUNT" >> $GITHUB_OUTPUT
+          
+          # Mostrar resumen
+          echo "════════════════════════════════════════"
+          echo "📱 RESUMEN DE SEGURIDAD MÓVIL"
+          echo "════════════════════════════════════════"
+          echo "🔴 Problemas Altos:   $HIGH_COUNT"
+          echo "🟠 Problemas Medios:  $MEDIUM_COUNT"
+          echo "🟡 Problemas Bajos:   $LOW_COUNT"
+          echo "════════════════════════════════════════"
+          
+      - name: Generar reporte PDF
+        if: always()
+        continue-on-error: true
+        run: |
+          API_KEY="8012fc49fc6b44209e7cd2f4f5d16825c0f5d2c20d284667aa3cc996dee5eb4d"
+          HASH="${{ steps.mobsf_scan.outputs.hash }}"
+          
+          curl -s -X POST \
+            -H "Authorization: $API_KEY" \
+            -d "hash=$HASH" \
+            http://localhost:8000/api/v1/download_pdf \
+            -o mobsf-security-report.pdf
+            
+      - name: Subir reportes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            mobsf-report.json
+            mobsf-security-report.pdf
+            
+      - name: Comentar en PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const high = ${{ steps.mobsf_scan.outputs.high_count }};
+            const medium = ${{ steps.mobsf_scan.outputs.medium_count }};
+            const low = ${{ steps.mobsf_scan.outputs.low_count }};
+            
+            const status = high > 0 ? '❌ Requiere atención' : '✅ Sin problemas críticos';
+            
+            const comment = `## 🛡️ Análisis de Seguridad Móvil (MobSF)
+            
+            **Estado**: ${status}
+            
+            | Severidad | Cantidad | Descripción |
+            |-----------|----------|-------------|
+            | 🔴 Alta | ${high} | Problemas críticos que deben solucionarse |
+            | 🟠 Media | ${medium} | Problemas importantes a considerar |
+            | 🟡 Baja | ${low} | Mejoras recomendadas |
+            
+            📄 Los reportes detallados están disponibles en los artifacts del workflow.`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            })
+            
+      - name: Verificar umbrales de seguridad
+        run: |
+          HIGH_COUNT=${{ steps.mobsf_scan.outputs.high_count }}
+          
+          if [ "$HIGH_COUNT" -gt 0 ]; then
+            echo "❌ Se encontraron $HIGH_COUNT problemas de alta severidad"
+            echo "Por favor revisa el reporte de seguridad antes de mergear"
+            exit 1
+          else
+            echo "✅ No se encontraron problemas críticos"
+          fi
+
+  # 4. Publicar APK (solo si pasan todos los tests)
+  publish:
+    name: 🚀 Publicar APK
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [secret_scan, code_analysis, build_and_scan]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.27.3'
+
+    - name: 📦 Instalar dependencias y construir APK
+      run: |
+        flutter pub get
+        flutter build apk --release
+
+    - name: 🗂️ Guardar APK como artefacto
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release
+        path: build/app/outputs/flutter-apk/app-release.apk
