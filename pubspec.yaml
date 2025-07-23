@@ -1,0 +1,54 @@
+name: paciente_citas_1
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0+2
+
+environment:
+  sdk: ^3.5.4
+
+dependencies:
+  cloud_firestore: ^5.6.4
+  cupertino_icons: ^1.0.2
+  dio: ^5.7.0
+  equatable: ^2.0.7
+  firebase_auth: ^5.5.0
+  firebase_core: ^3.12.0
+  firebase_messaging: ^15.1.6
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_dotenv: ^5.2.1
+  flutter_launcher_icons: ^0.14.3
+  flutter_local_notifications: ^18.0.1
+  flutter_riverpod: ^2.6.1
+  flutter_secure_storage: ^9.2.4
+  formz: ^0.8.0
+  go_router: ^14.6.1
+  intl: ^0.19.0
+  permission_handler: ^11.3.1
+  shared_preferences: ^2.3.5
+  table_calendar: ^3.0.9
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/iconApp/iconCtApp.png
+    - .env
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/iconApp/iconCtApp.png" # Ruta del ícono
+  adaptive_icon_foreground: "assets/iconApp/iconCtApp.png"
+  adaptive_icon_background: "#ffffff"
+
+# The following adds the Cupertino Icons font to your application.
+# Use with the CupertinoIcons class for iOS style icons.
+cupertino_icons: ^1.0.2
